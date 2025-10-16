@@ -45,6 +45,7 @@ private slots:
     void on_startSimulationButton_clicked();
     void on_pauseResumeButton_clicked();
     void on_speedComboBox_currentIndexChanged(int index);
+    void on_onlineDebugButton_clicked();
 
     // 菜单栏槽函数
     void on_actionExit_triggered();
@@ -108,6 +109,7 @@ private:
     // 辅助函数
     void updateSimulationControlFile();
     void enableSimulationControls(bool enable);
+    void createPythonDebugScript(const QString &scriptPath);
 };
 
 #endif // MAINWINDOW_H

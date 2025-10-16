@@ -960,3 +960,237 @@ void MainWindow::enableSimulationControls(bool enable)
         updateSimulationControlFile();
     }
 }
+
+void MainWindow::on_onlineDebugButton_clicked()
+{
+    addLogMessage("启动在线调试功能...", "INFO");
+    
+    // 获取应用程序目录
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString pythonScriptPath = appDir + "/online_debug.py";
+    
+    // 检查Python脚本是否存在，如果不存在则创建
+    QFileInfo scriptInfo(pythonScriptPath);
+    if (!scriptInfo.exists()) {
+        addLogMessage("创建Python调试脚本...", "INFO");
+        createPythonDebugScript(pythonScriptPath);
+    }
+    
+    // 启动Python脚本
+    QProcess *pythonProcess = new QProcess(this);
+    
+    // 设置工作目录
+    pythonProcess->setWorkingDirectory(appDir);
+    
+    // 启动Python脚本
+    QString pythonCommand = "python";
+    QStringList arguments;
+    arguments << "online_debug.py";
+    
+    // 连接信号槽以处理进程输出
+    connect(pythonProcess, &QProcess::readyReadStandardOutput, [this, pythonProcess]() {
+        QByteArray data = pythonProcess->readAllStandardOutput();
+        addLogMessage(QString("Python输出: %1").arg(QString::fromUtf8(data).trimmed()), "DEBUG");
+    });
+    
+    connect(pythonProcess, &QProcess::readyReadStandardError, [this, pythonProcess]() {
+        QByteArray data = pythonProcess->readAllStandardError();
+        addLogMessage(QString("Python错误: %1").arg(QString::fromUtf8(data).trimmed()), "ERROR");
+    });
+    
+    connect(pythonProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            [this](int exitCode, QProcess::ExitStatus exitStatus) {
+        if (exitStatus == QProcess::CrashExit) {
+            addLogMessage("Python调试脚本异常退出", "ERROR");
+        } else {
+            addLogMessage(QString("Python调试脚本正常退出，退出代码: %1").arg(exitCode), "INFO");
+        }
+    });
+    
+    pythonProcess->start(pythonCommand, arguments);
+    
+    if (!pythonProcess->waitForStarted(3000)) {
+        addLogMessage("启动Python调试脚本失败: " + pythonProcess->errorString(), "ERROR");
+        pythonProcess->deleteLater();
+    } else {
+        addLogMessage("Python调试脚本启动成功", "INFO");
+        addLogMessage("正在连接到远程服务器 180.1.80.238:1010", "INFO");
+        addLogMessage("本地监听端口 10113 接收红方态势信息", "INFO");
+    }
+}
+
+void MainWindow::createPythonDebugScript(const QString &scriptPath)
+{
+    QFile file(scriptPath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&file);
+        out.setCodec("UTF-8");
+        
+        // Write Python script content
+        out << "#!/usr/bin/env python3\n";
+        out << "# -*- coding: utf-8 -*-\n";
+        out << "\"\"\"\n";
+        out << "Online Debug Script\n";
+        out << "Connect to remote server and receive red aircraft situation data\n";
+        out << "\"\"\"\n\n";
+        out << "import socket\n";
+        out << "import threading\n";
+        out << "import json\n";
+        out << "import time\n";
+        out << "import sys\n\n";
+        
+        out << "# Configuration parameters\n";
+        out << "REMOTE_IP = '180.1.80.238'\n";
+        out << "REMOTE_PORT = 1010\n";
+        out << "LOCAL_IP = '180.1.80.129'\n";
+        out << "LOCAL_PORT = 10113\n\n";
+        
+        out << "class OnlineDebugger:\n";
+        out << "    def __init__(self):\n";
+        out << "        self.running = True\n";
+        out << "        self.remote_socket = None\n";
+        out << "        self.local_socket = None\n\n";
+        
+        out << "    def connect_to_remote(self):\n";
+        out << "        \"\"\"Connect to remote server\"\"\"\n";
+        out << "        try:\n";
+        out << "            self.remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n";
+        out << "            self.remote_socket.connect((REMOTE_IP, REMOTE_PORT))\n";
+        out << "            print(f'Successfully connected to remote server {REMOTE_IP}:{REMOTE_PORT}')\n";
+        out << "            return True\n";
+        out << "        except Exception as e:\n";
+        out << "            print(f'Failed to connect to remote server: {e}')\n";
+        out << "            return False\n\n";
+        
+        out << "    def start_local_server(self):\n";
+        out << "        \"\"\"Start local server to receive red aircraft situation data\"\"\"\n";
+        out << "        try:\n";
+        out << "            self.local_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n";
+        out << "            self.local_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n";
+        out << "            self.local_socket.bind((LOCAL_IP, LOCAL_PORT))\n";
+        out << "            self.local_socket.listen(5)\n";
+        out << "            print(f'Local server started, listening on {LOCAL_IP}:{LOCAL_PORT}')\n";
+        out << "            \n";
+        out << "            while self.running:\n";
+        out << "                try:\n";
+        out << "                    client_socket, addr = self.local_socket.accept()\n";
+        out << "                    print(f'Received connection from {addr}')\n";
+        out << "                    \n";
+        out << "                    # Create thread to handle client connection\n";
+        out << "                    client_thread = threading.Thread(\n";
+        out << "                        target=self.handle_client,\n";
+        out << "                        args=(client_socket, addr)\n";
+        out << "                    )\n";
+        out << "                    client_thread.daemon = True\n";
+        out << "                    client_thread.start()\n";
+        out << "                    \n";
+        out << "                except socket.error as e:\n";
+        out << "                    if self.running:\n";
+        out << "                        print(f'Error accepting connection: {e}')\n";
+        out << "                        \n";
+        out << "        except Exception as e:\n";
+        out << "            print(f'Failed to start local server: {e}')\n\n";
+        
+        out << "    def handle_client(self, client_socket, addr):\n";
+        out << "        \"\"\"Handle client connection\"\"\"\n";
+        out << "        try:\n";
+        out << "            while self.running:\n";
+        out << "                data = client_socket.recv(4096)\n";
+        out << "                if not data:\n";
+        out << "                    break\n";
+        out << "                    \n";
+        out << "                # Parse received situation data\n";
+        out << "                try:\n";
+        out << "                    message = data.decode('utf-8')\n";
+        out << "                    print(f'Received red aircraft situation data: {message}')\n";
+        out << "                    \n";
+        out << "                    # Try to parse JSON format situation data\n";
+        out << "                    try:\n";
+        out << "                        situation_data = json.loads(message)\n";
+        out << "                        self.process_situation_data(situation_data)\n";
+        out << "                    except json.JSONDecodeError:\n";
+        out << "                        print('Received non-JSON format data, processing as text')\n";
+        out << "                        \n";
+        out << "                except UnicodeDecodeError:\n";
+        out << "                    print('Received binary data')\n";
+        out << "                    \n";
+        out << "        except Exception as e:\n";
+        out << "            print(f'Error handling client connection: {e}')\n";
+        out << "        finally:\n";
+        out << "            client_socket.close()\n";
+        out << "            print(f'Connection with {addr} closed')\n\n";
+        
+        out << "    def process_situation_data(self, data):\n";
+        out << "        \"\"\"Process situation data\"\"\"\n";
+        out << "        print('Processing situation data:')\n";
+        out << "        if isinstance(data, dict):\n";
+        out << "            if 'red_aircraft' in data:\n";
+        out << "                print(f'  Red aircraft count: {len(data[\"red_aircraft\"])}')\n";
+        out << "                for aircraft in data['red_aircraft']:\n";
+        out << "                    print(f'    Aircraft ID: {aircraft.get(\"id\", \"Unknown\")}, '\n";
+        out << "                          f'Type: {aircraft.get(\"type\", \"Unknown\")}, '\n";
+        out << "                          f'Position: ({aircraft.get(\"longitude\", 0)}, {aircraft.get(\"latitude\", 0)})')\n";
+        out << "            \n";
+        out << "            if 'timestamp' in data:\n";
+        out << "                print(f'  Timestamp: {data[\"timestamp\"]}')\n";
+        out << "        else:\n";
+        out << "            print(f'  Data content: {data}')\n\n";
+        
+        out << "    def send_to_remote(self, data):\n";
+        out << "        \"\"\"Send data to remote server\"\"\"\n";
+        out << "        if self.remote_socket:\n";
+        out << "            try:\n";
+        out << "                if isinstance(data, dict):\n";
+        out << "                    data = json.dumps(data, ensure_ascii=False)\n";
+        out << "                self.remote_socket.send(data.encode('utf-8'))\n";
+        out << "                print(f'Sent data to remote server: {data}')\n";
+        out << "            except Exception as e:\n";
+        out << "                print(f'Failed to send data to remote server: {e}')\n\n";
+        
+        out << "    def run(self):\n";
+        out << "        \"\"\"Run debugger\"\"\"\n";
+        out << "        print('Starting online debugger...')\n";
+        out << "        \n";
+        out << "        # Connect to remote server\n";
+        out << "        if self.connect_to_remote():\n";
+        out << "            # Start local server thread\n";
+        out << "            server_thread = threading.Thread(target=self.start_local_server)\n";
+        out << "            server_thread.daemon = True\n";
+        out << "            server_thread.start()\n";
+        out << "            \n";
+        out << "            try:\n";
+        out << "                print('Debugger running, press Ctrl+C to exit...')\n";
+        out << "                while self.running:\n";
+        out << "                    time.sleep(1)\n";
+        out << "            except KeyboardInterrupt:\n";
+        out << "                print('\\nReceived exit signal')\n";
+        out << "        \n";
+        out << "        self.cleanup()\n\n";
+        
+        out << "    def cleanup(self):\n";
+        out << "        \"\"\"Clean up resources\"\"\"\n";
+        out << "        print('Cleaning up resources...')\n";
+        out << "        self.running = False\n";
+        out << "        \n";
+        out << "        if self.remote_socket:\n";
+        out << "            self.remote_socket.close()\n";
+        out << "            print('Remote connection closed')\n";
+        out << "            \n";
+        out << "        if self.local_socket:\n";
+        out << "            self.local_socket.close()\n";
+        out << "            print('Local server closed')\n\n";
+        
+        out << "if __name__ == '__main__':\n";
+        out << "    debugger = OnlineDebugger()\n";
+        out << "    try:\n";
+        out << "        debugger.run()\n";
+        out << "    except Exception as e:\n";
+        out << "        print(f'Program exited with exception: {e}')\n";
+        out << "        debugger.cleanup()\n";
+        
+        file.close();
+        addLogMessage("Python debug script created successfully: " + scriptPath, "INFO");
+    } else {
+        addLogMessage("Failed to create Python debug script: " + file.errorString(), "ERROR");
+    }
+}

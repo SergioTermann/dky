@@ -1,0 +1,1073 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>红蓝态势显示平台</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>:/icons/app.png</normaloff>:/icons/app.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="centralLayout">
+    <property name="spacing">
+     <number>6</number>
+    </property>
+    <property name="leftMargin">
+     <number>9</number>
+    </property>
+    <property name="topMargin">
+     <number>9</number>
+    </property>
+    <property name="rightMargin">
+     <number>9</number>
+    </property>
+    <property name="bottomMargin">
+     <number>9</number>
+    </property>
+    
+    <!-- 主工作区域 -->
+    <item>
+     <widget class="QSplitter" name="mainSplitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="childrenCollapsible">
+       <bool>false</bool>
+      </property>
+      
+      <!-- 红方态势组 -->
+      <widget class="QGroupBox" name="redGroupBox">
+       <property name="title">
+        <string>🔴 红方态势</string>
+       </property>
+       <property name="styleSheet">
+        <string>QGroupBox {
+    font-weight: bold;
+    font-size: 14px;
+    color: #E53E3E;
+    border: 2px solid #E53E3E;
+    border-radius: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}</string>
+       </property>
+       <property name="minimumWidth">
+        <number>400</number>
+       </property>
+       
+       <layout class="QVBoxLayout" name="redLayout">
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        
+        <!-- 红方统计信息 -->
+        <item>
+         <widget class="QFrame" name="redStatsFrame">
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameStyle">
+           <number>0</number>
+          </property>
+          <property name="styleSheet">
+           <string>QFrame {
+    background-color: #FED7D7;
+    border-radius: 6px;
+    padding: 8px;
+}</string>
+          </property>
+          <layout class="QHBoxLayout" name="redStatsLayout">
+ 	   <item>
+            <widget class="QLabel" name="redCountLabel">
+             <property name="text">
+              <string>📊 总数: 0架</string>
+             </property>
+             <property name="styleSheet">
+              <string>font-weight: bold; color: #C53030;</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="redScoreLabel">
+             <property name="text">
+              <string>⭐ 评分: 0</string>
+             </property>
+             <property name="styleSheet">
+              <string>font-weight: bold; color: #C53030;</string>
+             </property>
+            </widget>
+           </item>
+          <item>
+           <spacer name="redStatsSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="clearRedButton">
+            <property name="text">
+             <string>🗑️ 清空</string>
+            </property>
+            <property name="styleSheet">
+             <string>QPushButton {
+               background-color: #E53E3E;
+               color: white;
+               border: none;
+               border-radius: 4px;
+               padding: 4px 8px;
+               font-size: 11px;
+               font-weight: bold;
+               }
+             QPushButton:hover {
+             background-color: #C53030;
+             }</string>
+            </property>
+            <property name="maximumWidth">
+             <number>60</number>
+            </property>
+            <property name="maximumHeight">
+             <number>25</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+        
+        <!-- 红方表格 -->
+        <item>
+         <widget class="QTableView" name="redTableView">
+          <property name="styleSheet">
+           <string>QTableView {
+    gridline-color: #E2E8F0;
+    background-color: white;
+    alternate-background-color: #F7FAFC;
+    selection-background-color: #FED7D7;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+}
+QTableView::item {
+    padding: 8px;
+    border-bottom: 1px solid #E2E8F0;
+}
+QHeaderView::section {
+    background-color: #E53E3E;
+    color: white;
+    padding: 8px;
+    border: none;
+    font-weight: bold;
+}</string>
+          </property>
+          <property name="alternatingRowColors">
+           <bool>true</bool>
+          </property>
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SingleSelection</enum>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        
+        <!-- 红方操作按钮 -->
+        <item>
+         <layout class="QHBoxLayout" name="redButtonLayout">
+          <item>
+           <widget class="QPushButton" name="addRedAircraftButton">
+            <property name="text">
+             <string>➕ 添加</string>
+            </property>
+            <property name="styleSheet">
+             <string>QPushButton {
+    background-color: #38A169;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #2F855A;
+}
+QPushButton:pressed {
+    background-color: #276749;
+}</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="removeRedAircraftButton">
+            <property name="text">
+             <string>❌ 删除</string>
+            </property>
+            <property name="styleSheet">
+             <string>QPushButton {
+    background-color: #E53E3E;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #C53030;
+}
+QPushButton:pressed {
+    background-color: #9C1A1C;
+}</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="redButtonSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+      
+      <!-- 控制面板组 -->
+      <widget class="QGroupBox" name="controlGroupBox">
+       <property name="title">
+        <string>⚙️ 控制面板</string>
+       </property>
+       <property name="styleSheet">
+        <string>QGroupBox {
+    font-weight: bold;
+    font-size: 14px;
+    color: #4A5568;
+    border: 2px solid #4A5568;
+    border-radius: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}</string>
+       </property>
+       <property name="minimumWidth">
+        <number>280</number>
+       </property>
+       <property name="maximumWidth">
+        <number>320</number>
+       </property>
+       
+       <layout class="QVBoxLayout" name="controlLayout">
+        <property name="spacing">
+         <number>12</number>
+        </property>
+        
+        <!-- 手动设置区域 -->
+        <item>
+         <widget class="QFrame" name="manualSettingFrame">
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="styleSheet">
+           <string>QFrame {
+    background-color: #F0FFF4;
+    border: 1px solid #9AE6B4;
+    border-radius: 8px;
+    padding: 12px;
+}</string>
+          </property>
+          <layout class="QVBoxLayout" name="manualSettingLayout">
+           <item>
+            <widget class="QLabel" name="manualSettingLabel">
+             <property name="text">
+              <string>✋ 手动设置</string>
+             </property>
+             <property name="styleSheet">
+              <string>font-weight: bold; color: #2F855A; font-size: 13px;</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QFormLayout" name="manualFormLayout">
+             <property name="fieldGrowthPolicy">
+              <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+             </property>
+             <property name="verticalSpacing">
+              <number>8</number>
+             </property>
+             
+             <item row="0" column="0">
+              <widget class="QLabel" name="blueCountLabel">
+               <property name="text">
+                <string>蓝方数量:</string>
+               </property>
+               <property name="styleSheet">
+                <string>font-weight: bold; color: #2D3748;</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QSpinBox" name="blueAircraftCountSpinBox">
+               <property name="styleSheet">
+                <string>QSpinBox {
+    padding: 6px;
+    border: 2px solid #E2E8F0;
+    border-radius: 6px;
+    background-color: white;
+}
+QSpinBox:focus {
+    border-color: #3182CE;
+}</string>
+               </property>
+               <property name="suffix">
+                <string> 架</string>
+               </property>
+               <property name="minimum">
+                <number>0</number>
+               </property>
+               <property name="maximum">
+                <number>100</number>
+               </property>
+              </widget>
+             </item>
+             
+             <item row="1" column="0">
+              <widget class="QLabel" name="strategyLabel">
+               <property name="text">
+                <string>难度选择:</string>
+               </property>
+               <property name="styleSheet">
+                <string>font-weight: bold; color: #2D3748;</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QComboBox" name="strategyComboBox">
+               <property name="styleSheet">
+                <string>QComboBox {
+    padding: 6px;
+    border: 2px solid #E2E8F0;
+    border-radius: 6px;
+    background-color: white;
+}
+QComboBox:focus {
+    border-color: #3182CE;
+}
+QComboBox::drop-down {
+    border: none;
+}
+QComboBox::down-arrow {
+    image: url(:/icons/arrow-down.png);
+    width: 12px;
+    height: 12px;
+}</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        
+        <!-- 生成按钮 -->
+        <item>
+         <widget class="QPushButton" name="generateButton">
+          <property name="text">
+           <string>🎯 生成态势文件</string>
+          </property>
+          <property name="styleSheet">
+           <string>QPushButton {
+    background-color: #3182CE;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 16px;
+    font-weight: bold;
+    font-size: 14px;
+}
+QPushButton:hover {
+    background-color: #2C5282;
+}
+QPushButton:pressed {
+    background-color: #2A4365;
+}
+QPushButton:disabled {
+    background-color: #A0AEC0;
+    color: #718096;
+}</string>
+          </property>
+          <property name="minimumHeight">
+           <number>50</number>
+          </property>
+         </widget>
+        </item>
+
+        <!-- 开始推演按钮 -->
+        <item>
+         <widget class="QPushButton" name="startSimulationButton">
+          <property name="text">
+           <string>▶️ 开始</string>
+          </property>
+          <property name="styleSheet">
+           <string>QPushButton {
+    background-color: #38A169;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 16px;
+    font-weight: bold;
+    font-size: 14px;
+}
+QPushButton:hover {
+    background-color: #2F855A;
+}
+QPushButton:pressed {
+    background-color: #276749;
+}
+QPushButton:disabled {
+    background-color: #A0AEC0;
+    color: #718096;
+}</string>
+          </property>
+          <property name="minimumHeight">
+           <number>50</number>
+          </property>
+         </widget>
+        </item>
+        
+        <!-- 推演控制按钮区域 -->
+        <item>
+         <layout class="QHBoxLayout" name="simulationControlLayout">
+          <property name="spacing">
+           <number>12</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="pauseResumeButton">
+            <property name="text">
+             <string>⏸️ 暂停</string>
+            </property>
+            <property name="styleSheet">
+             <string>QPushButton {
+    background-color: #ED8936;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 12px;
+    font-weight: bold;
+    font-size: 13px;
+}
+QPushButton:hover {
+    background-color: #DD6B20;
+}
+QPushButton:pressed {
+    background-color: #C05621;
+}
+QPushButton:disabled {
+    background-color: #A0AEC0;
+    color: #718096;
+}</string>
+            </property>
+            <property name="minimumHeight">
+             <number>40</number>
+            </property>
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="speedLabel">
+            <property name="text">
+             <string>倍速:</string>
+            </property>
+            <property name="styleSheet">
+             <string>font-weight: bold; font-size: 13px;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="speedComboBox">
+            <property name="styleSheet">
+             <string>QComboBox {
+    background-color: white;
+    border: 2px solid #CBD5E0;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 13px;
+    min-width: 80px;
+}
+QComboBox:hover {
+    border-color: #4299E1;
+}
+QComboBox::drop-down {
+    border: none;
+}
+QComboBox::down-arrow {
+    image: url(down_arrow.png);
+    width: 12px;
+    height: 12px;
+}</string>
+            </property>
+            <property name="minimumHeight">
+             <number>40</number>
+            </property>
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <item>
+             <property name="text">
+              <string>0.5x</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>1x</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>1.5x</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        
+        <!-- 算法推荐信息 -->
+        <item>
+         <widget class="QFrame" name="recommendFrame">
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="styleSheet">
+           <string>QFrame {
+    background-color: #EBF4FF;
+    border: 1px solid #90CDF4;
+    border-radius: 8px;
+    padding: 12px;
+}</string>
+          </property>
+          <layout class="QVBoxLayout" name="recommendLayout">
+           <property name="spacing">
+            <number>8</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="recommendTitleLabel">
+             <property name="text">
+              <string>🤖 算法推荐</string>
+             </property>
+             <property name="styleSheet">
+              <string>font-weight: bold; font-size: 13px; color: #2C5282;</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="recommendCountLabel">
+             <property name="text">
+              <string>• 建议数量: 待计算</string>
+             </property>
+             <property name="styleSheet">
+              <string>color: #2D3748; font-size: 12px;</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="recommendStrategyLabel">
+             <property name="text">
+              <string>• 建议难度: 待计算</string>
+             </property>
+             <property name="styleSheet">
+              <string>color: #2D3748; font-size: 12px;</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        
+        <item>
+         <spacer name="controlSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+      
+      <!-- 蓝方态势组 -->
+      <widget class="QGroupBox" name="blueGroupBox">
+       <property name="title">
+        <string>🔵 蓝方态势</string>
+       </property>
+       <property name="styleSheet">
+        <string>QGroupBox {
+    font-weight: bold;
+    font-size: 14px;
+    color: #3182CE;
+    border: 2px solid #3182CE;
+    border-radius: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}</string>
+       </property>
+       <property name="minimumWidth">
+        <number>400</number>
+       </property>
+       
+       <layout class="QVBoxLayout" name="blueLayout">
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        
+        <!-- 蓝方统计信息 -->
+        <item>
+         <widget class="QFrame" name="blueStatsFrame">
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameStyle">
+           <number>0</number>
+          </property>
+          <property name="styleSheet">
+           <string>QFrame {
+    background-color: #BEE3F8;
+    border-radius: 6px;
+    padding: 8px;
+}</string>
+          </property>
+          <layout class="QHBoxLayout" name="blueStatsLayout">
+ <item>
+  <widget class="QLabel" name="blueCountDisplayLabel">
+   <property name="text">
+    <string>📊 总数: 0架</string>
+   </property>
+   <property name="styleSheet">
+    <string>font-weight: bold; color: #2C5282;</string>
+   </property>
+  </widget>
+ </item>
+ <item>
+  <widget class="QLabel" name="blueScoreLabel">
+   <property name="text">
+    <string>⭐ 评分: 0</string>
+   </property>
+   <property name="styleSheet">
+    <string>font-weight: bold; color: #2C5282;</string>
+   </property>
+  </widget>
+ </item>
+ <item>
+  <spacer name="blueStatsSpacer">
+   <property name="orientation">
+    <enum>Qt::Horizontal</enum>
+   </property>
+   <property name="sizeHint" stdset="0">
+    <size>
+     <width>40</width>
+     <height>20</height>
+    </size>
+   </property>
+  </spacer>
+ </item>
+ <item>
+  <widget class="QPushButton" name="clearBlueButton">
+   <property name="text">
+    <string>🗑️ 清空</string>
+   </property>
+   <property name="styleSheet">
+    <string>QPushButton {
+    background-color: #3182CE;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #2C5282;
+}</string>
+   </property>
+   <property name="maximumWidth">
+    <number>60</number>
+   </property>
+   <property name="maximumHeight">
+    <number>25</number>
+   </property>
+  </widget>
+ </item>
+</layout>
+         </widget>
+        </item>
+        
+        <!-- 蓝方表格 -->
+        <item>
+         <widget class="QTableView" name="blueTableView">
+          <property name="styleSheet">
+           <string>QTableView {
+    gridline-color: #E2E8F0;
+    background-color: white;
+    alternate-background-color: #F7FAFC;
+    selection-background-color: #BEE3F8;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+}
+QTableView::item {
+    padding: 8px;
+    border-bottom: 1px solid #E2E8F0;
+}
+QHeaderView::section {
+    background-color: #3182CE;
+    color: white;
+    padding: 8px;
+    border: none;
+    font-weight: bold;
+}</string>
+          </property>
+          <property name="alternatingRowColors">
+           <bool>true</bool>
+          </property>
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SingleSelection</enum>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+    
+    <!-- 底部日志面板 -->
+    <item>
+     <widget class="QGroupBox" name="logGroupBox">
+      <property name="title">
+       <string>📝 操作日志</string>
+      </property>
+      <property name="styleSheet">
+       <string>QGroupBox {
+    font-weight: bold;
+    font-size: 13px;
+    color: #4A5568;
+    border: 1px solid #A0AEC0;
+    border-radius: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 6px 0 6px;
+}</string>
+      </property>
+      <property name="minimumHeight">
+       <number>120</number>
+      </property>
+      <property name="maximumHeight">
+       <number>180</number>
+      </property>
+      
+      <layout class="QVBoxLayout" name="logLayout">
+       <property name="spacing">
+        <number>6</number>
+       </property>
+       
+       <!-- 日志控制栏 -->
+       <item>
+        <layout class="QHBoxLayout" name="logControlLayout">
+         <item>
+          <widget class="QCheckBox" name="autoScrollCheckBox">
+           <property name="text">
+            <string>自动滚动</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+           <property name="styleSheet">
+            <string>QCheckBox {
+    font-weight: bold;
+    color: #4A5568;
+}</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="logCountLabel">
+           <property name="text">
+            <string>条目: 0</string>
+           </property>
+           <property name="styleSheet">
+            <string>color: #718096;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="logControlSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="clearLogButton">
+           <property name="text">
+            <string>🗑️ 清空日志</string>
+           </property>
+           <property name="styleSheet">
+            <string>QPushButton {
+    background-color: #A0AEC0;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #718096;
+}</string>
+           </property>
+           <property name="maximumWidth">
+            <number>100</number>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       
+       <!-- 日志文本区域 -->
+       <item>
+        <widget class="QTextEdit" name="logTextEdit">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="styleSheet">
+          <string>QTextEdit {
+    background-color: #F7FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 4px;
+    font-family: "Consolas", "Monaco", "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #2D3748;
+}
+QScrollBar:vertical {
+    background-color: #F7FAFC;
+    width: 12px;
+    border-radius: 6px;
+}
+QScrollBar::handle:vertical {
+    background-color: #CBD5E0;
+    border-radius: 6px;
+    min-height: 20px;
+}
+QScrollBar::handle:vertical:hover {
+    background-color: #A0AEC0;
+}</string>
+         </property>
+         <property name="html">
+          <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Consolas','Monaco','Courier New',monospace; font-size:12px; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#718096;&quot;&gt;系统就绪，等待操作...&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  
+  <!-- 菜单栏 -->
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1200</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>文件(F)</string>
+    </property>
+    <addaction name="actionLoadRed"/>
+    <addaction name="actionSave"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>视图(V)</string>
+    </property>
+    <addaction name="actionToggleLog"/>
+    <addaction name="separator"/>
+    <addaction name="actionZoomIn"/>
+    <addaction name="actionZoomOut"/>
+    <addaction name="actionResetZoom"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>帮助(H)</string>
+    </property>
+    <addaction name="actionAbout"/>
+    <addaction name="actionManual"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuView"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  
+  <!-- 状态栏 -->
+  <widget class="QStatusBar" name="statusbar">
+   <property name="styleSheet">
+    <string>QStatusBar {
+    background-color: #F7FAFC;
+    border-top: 1px solid #E2E8F0;
+    color: #4A5568;
+    font-size: 12px;
+}</string>
+   </property>
+  </widget>
+  
+  <!-- 动作定义 -->
+  <action name="actionLoadRed">
+   <property name="text">
+    <string>加载红方态势</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="text">
+    <string>保存态势数据</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>退出</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="actionToggleLog">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>显示日志面板</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
+   </property>
+  </action>
+  <action name="actionZoomIn">
+   <property name="text">
+    <string>放大</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+=</string>
+   </property>
+  </action>
+  <action name="actionZoomOut">
+   <property name="text">
+    <string>缩小</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+-</string>
+   </property>
+  </action>
+  <action name="actionResetZoom">
+   <property name="text">
+    <string>重置缩放</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+0</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>关于</string>
+   </property>
+  </action>
+  <action name="actionManual">
+   <property name="text">
+    <string>使用手册</string>
+   </property>
+   <property name="shortcut">
+    <string>F1</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

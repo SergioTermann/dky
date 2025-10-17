@@ -11,6 +11,7 @@ import json
 import time
 import sys
 import datetime
+import struct
 
 # Configuration parameters
 REMOTE_IP = '180.1.80.238'
@@ -117,37 +118,138 @@ class OnlineDebugger:
         except Exception as e:
             log_with_timestamp(f'Failed to start local UDP server: {e}')
 
+    # 10月17-由嘉伟-udp解包
+    class UDPMessageParser:
+        """UDP消息解析器"""
+        
+        @staticmethod
+        def parse_message_header(data):
+            """解析UDP消息头"""
+            if len(data) < 26:  # 消息头固定26字节
+                return None
+                
+            # 解析消息头：MsgID(2) + SourcePlatCode(4) + ReceivePlatCode(4) + SerialNum(4) + 
+            #           CreateTime(8) + TotalPacks(1) + CurrentIndex(1) + DataLength(2)
+            header = struct.unpack('<HIIIQBBH', data[:26])
+            return {
+                'MsgID': header[0],
+                'SourcePlatCode': header[1], 
+                'ReceivePlatCode': header[2],
+                'SerialNum': header[3],
+                'CreateTime': header[4],
+                'TotalPacks': header[5],
+                'CurrentIndex': header[6],
+                'DataLength': header[7]
+            }
+        
+        @staticmethod
+        def parse_experiment_prep_message(data):
+            """解析试验准备消息(0x0001)"""
+            if len(data) < 231:  # 消息头26字节 + 消息体205字节 = 231字节
+                return None
+                
+            # ExperimentID(4) + ExperimentFileNo(1) + ExperimentName(100) + ExperimentFileName(100)
+            experiment_id = struct.unpack('<I', data[26:30])[0]
+            experiment_file_no = struct.unpack('<b', data[30:31])[0]
+            experiment_name = data[31:131].rstrip(b'\x00').decode('utf-8', errors='ignore')
+            experiment_file_name = data[131:231].rstrip(b'\x00').decode('utf-8', errors='ignore')
+            
+            return {
+                'ExperimentID': experiment_id,
+                'ExperimentFileNo': experiment_file_no,
+                'ExperimentName': experiment_name,
+                'ExperimentFileName': experiment_file_name
+            }
+        
+        @staticmethod
+        def create_experiment_feedback_message(experiment_id, ready_status=1):
+            """创建试验准备反馈消息(0x0002)"""
+            # 消息头
+            msg_id = 0x0002
+            source_plat = 0x00000001  # 本地平台代码
+            receive_plat = 0x00000000  # 远端平台代码
+            serial_num = int(time.time()) & 0xFFFFFFFF
+            create_time = int(time.time() * 1000)  # 毫秒时间戳
+            total_packs = 1
+            current_index = 1
+            data_length = 5  # ExperimentID(4) + ControlReady(1)
+            
+            # 打包消息头: MsgID(2) + SourcePlatCode(4) + ReceivePlatCode(4) + SerialNum(4) + 
+            #           CreateTime(8) + TotalPacks(1) + CurrentIndex(1) + DataLength(2)
+            header = struct.pack('<HIIIQBBH', msg_id, source_plat, receive_plat, serial_num,
+                               create_time, total_packs, current_index, data_length)
+            
+            # 打包消息体
+            body = struct.pack('<Ib', experiment_id, ready_status)
+            
+            return header + body
+
+    # 10月17-由嘉伟-udp解包
     def handle_udp_data(self, data, addr):
         """Handle UDP data from client"""
         log_with_timestamp(f'[UDP Client {addr}] Processing received data...')
         try:
-            # Parse received situation data
-            try:
-                message = data.decode('utf-8')
-                log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Decoded message: {message[:100]}{"..." if len(message) > 100 else ""}')
+            # 首先尝试解析UDP消息头
+            header = UDPMessageParser.parse_message_header(data)
+            if header:
+                msg_id = header['MsgID']
+                log_with_timestamp(f'[UDP Client {addr}] Parsed message header, MsgID: 0x{msg_id:04X}')
                 
-                # Try to parse JSON format situation data
+                # 如果接收到的是试验准备消息
+                if msg_id == 0x0001:
+                    log_with_timestamp(f'[UDP Client {addr}] Received experiment preparation message')
+                    prep_msg = UDPMessageParser.parse_experiment_prep_message(data)
+                    if prep_msg:
+                        log_with_timestamp(f'[UDP Client {addr}] Experiment ID: {prep_msg["ExperimentID"]}')
+                        log_with_timestamp(f'[UDP Client {addr}] Experiment Name: {prep_msg["ExperimentName"]}')
+                        log_with_timestamp(f'[UDP Client {addr}] Experiment File: {prep_msg["ExperimentFileName"]}')
+                        
+                        # 发送试验准备反馈消息
+                        feedback_msg = UDPMessageParser.create_experiment_feedback_message(
+                            prep_msg["ExperimentID"], ready_status=1)
+                        self.send_feedback_to_client(feedback_msg, addr)
+                    else:
+                        log_with_timestamp(f'[UDP Client {addr}] Failed to parse experiment preparation message')
+                else:
+                    log_with_timestamp(f'[UDP Client {addr}] Unsupported message type: 0x{msg_id:04X}')
+            else:
+                # 如果不是标准消息格式，按原来的方式处理
+                log_with_timestamp(f'[UDP Client {addr}] Not a standard message format, processing as before')
+                # Parse received situation data
                 try:
-                    situation_data = json.loads(message)
-                    log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Successfully parsed JSON data')
-                    self.process_situation_data(situation_data, addr)
+                    message = data.decode('utf-8')
+                    log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Decoded message: {message[:100]}{"..." if len(message) > 100 else ""}')
                     
-                    # Forward data to remote server
-                    self.send_to_remote(situation_data)
+                    # Try to parse JSON format situation data
+                    try:
+                        situation_data = json.loads(message)
+                        log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Successfully parsed JSON data')
+                        self.process_situation_data(situation_data, addr)
+                        
+                        # Forward data to remote server
+                        self.send_to_remote(situation_data)
+                        
+                    except json.JSONDecodeError as e:
+                        log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] JSON decode error: {e}')
+                        log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Processing as plain text')
+                        
+                        # Forward plain text to remote server
+                        self.send_to_remote(message)
+                        
+                except UnicodeDecodeError as e:
+                    log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Unicode decode error: {e}')
+                    log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Received binary data of {len(data)} bytes')
                     
-                except json.JSONDecodeError as e:
-                    log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] JSON decode error: {e}')
-                    log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Processing as plain text')
-                    
-                    # Forward plain text to remote server
-                    self.send_to_remote(message)
-                    
-            except UnicodeDecodeError as e:
-                log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Unicode decode error: {e}')
-                log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Received binary data of {len(data)} bytes')
-                
         except Exception as e:
             log_with_timestamp(f'[UDP Client {addr}] Error handling UDP data: {e}')
+
+    def send_feedback_to_client(self, feedback_data, client_addr):
+        """发送反馈消息给客户端"""
+        try:
+            self.local_socket.sendto(feedback_data, client_addr)
+            log_with_timestamp(f'[UDP Client {client_addr}] Sent experiment feedback message ({len(feedback_data)} bytes)')
+        except Exception as e:
+            log_with_timestamp(f'[UDP Client {client_addr}] Failed to send feedback: {e}')
 
     def process_situation_data(self, data, client_addr):
         """Process situation data"""

@@ -11,6 +11,7 @@ import json
 import time
 import sys
 import datetime
+import struct
 
 # Configuration parameters
 REMOTE_IP = '180.1.80.238'
@@ -119,6 +120,73 @@ class OnlineDebugger:
         except Exception as e:
             log_with_timestamp(f'Failed to start local UDP server: {e}')
 
+    # 10月17-由嘉伟-udp解包
+    class UDPMessageParser:
+        """UDP消息解析器"""
+        
+        @staticmethod
+        def parse_message_header(data):
+            """解析UDP消息头"""
+            if len(data) < 26:  # 消息头固定26字节
+                return None
+                
+            # 解析消息头：MsgID(2) + SourcePlatCode(4) + ReceivePlatCode(4) + SerialNum(4) + 
+            #           CreateTime(8) + TotalPacks(1) + CurrentIndex(1) + DataLength(2)
+            header = struct.unpack('<HIIIQBBH', data[:26])
+            return {
+                'MsgID': header[0],
+                'SourcePlatCode': header[1], 
+                'ReceivePlatCode': header[2],
+                'SerialNum': header[3],
+                'CreateTime': header[4],
+                'TotalPacks': header[5],
+                'CurrentIndex': header[6],
+                'DataLength': header[7]
+            }
+        
+        @staticmethod
+        def parse_experiment_prep_message(data):
+            """解析试验准备消息(0x0001)"""
+            if len(data) < 231:  # 消息头26字节 + 消息体205字节 = 231字节
+                return None
+                
+            # ExperimentID(4) + ExperimentFileNo(1) + ExperimentName(100) + ExperimentFileName(100)
+            experiment_id = struct.unpack('<I', data[26:30])[0]
+            experiment_file_no = struct.unpack('<b', data[30:31])[0]
+            experiment_name = data[31:131].rstrip(b'\x00').decode('utf-8', errors='ignore')
+            experiment_file_name = data[131:231].rstrip(b'\x00').decode('utf-8', errors='ignore')
+            
+            return {
+                'ExperimentID': experiment_id,
+                'ExperimentFileNo': experiment_file_no,
+                'ExperimentName': experiment_name,
+                'ExperimentFileName': experiment_file_name
+            }
+        
+        @staticmethod
+        def create_experiment_feedback_message(experiment_id, ready_status=1):
+            """创建试验准备反馈消息(0x0002)"""
+            # 消息头
+            msg_id = 0x0002
+            source_plat = 0x00000001  # 本地平台代码
+            receive_plat = 0x00000000  # 远端平台代码
+            serial_num = int(time.time()) & 0xFFFFFFFF
+            create_time = int(time.time() * 1000)  # 毫秒时间戳
+            total_packs = 1
+            current_index = 1
+            data_length = 5  # ExperimentID(4) + ControlReady(1)
+            
+            # 打包消息头: MsgID(2) + SourcePlatCode(4) + ReceivePlatCode(4) + SerialNum(4) + 
+            #           CreateTime(8) + TotalPacks(1) + CurrentIndex(1) + DataLength(2)
+            header = struct.pack('<HIIIQBBH', msg_id, source_plat, receive_plat, serial_num,
+                               create_time, total_packs, current_index, data_length)
+            
+            # 打包消息体
+            body = struct.pack('<Ib', experiment_id, ready_status)
+            
+            return header + body
+
+    # 10月17-由嘉伟-udp解包
     def handle_udp_data(self, data, addr):
         """Handle UDP data from client"""
         log_with_timestamp(f'[UDP Client {addr}] Processing received data...')
@@ -148,104 +216,8 @@ class OnlineDebugger:
                 log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Unicode decode error: {e}')
                 log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Received binary data of {len(data)} bytes')
                 
-                # Display hex dump for analysis
-                hex_data = data.hex()
-                log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] Hex dump: {hex_data}')
-                
-                # Display first 64 bytes in formatted hex for easier reading
-                if len(data) > 0:
-                    hex_formatted = ' '.join([hex_data[i:i+2] for i in range(0, min(128, len(hex_data)), 2)])
-                    log_with_timestamp(f'[UDP Client {addr}] [Message #{self.message_count}] First 64 bytes: {hex_formatted}')
-                
-                # Try to parse as binary protocol data
-                self.parse_binary_data(data, addr)
-                
         except Exception as e:
             log_with_timestamp(f'[UDP Client {addr}] Error handling UDP data: {e}')
-
-    def parse_binary_data(self, data, addr):
-        """Parse binary protocol data"""
-        try:
-            log_with_timestamp(f'[UDP Client {addr}] Parsing binary data structure...')
-            
-            if len(data) < 8:
-                log_with_timestamp(f'[UDP Client {addr}] Data too short for analysis (< 8 bytes)')
-                return
-            
-            # Try to identify data format by examining header bytes
-            header = data[:8]
-            log_with_timestamp(f'[UDP Client {addr}] Header bytes: {" ".join([f"{b:02x}" for b in header])}')
-            
-            # Check for common protocol signatures
-            if data[0:2] == b'\xff\xff':
-                log_with_timestamp(f'[UDP Client {addr}] Possible protocol with FF FF header')
-            elif data[0:4] == b'\x00\x00\x00\x00':
-                log_with_timestamp(f'[UDP Client {addr}] Possible protocol with null header')
-            
-            # Try to parse as structured data
-            import struct
-            
-            # Try different interpretations
-            try:
-                # Try as big-endian integers
-                if len(data) >= 4:
-                    val1 = struct.unpack('>I', data[0:4])[0]
-                    log_with_timestamp(f'[UDP Client {addr}] First 4 bytes as big-endian uint32: {val1}')
-                
-                if len(data) >= 8:
-                    val2 = struct.unpack('>I', data[4:8])[0]
-                    log_with_timestamp(f'[UDP Client {addr}] Bytes 4-8 as big-endian uint32: {val2}')
-                
-                # Try as little-endian integers
-                if len(data) >= 4:
-                    val3 = struct.unpack('<I', data[0:4])[0]
-                    log_with_timestamp(f'[UDP Client {addr}] First 4 bytes as little-endian uint32: {val3}')
-                
-                if len(data) >= 8:
-                    val4 = struct.unpack('<I', data[4:8])[0]
-                    log_with_timestamp(f'[UDP Client {addr}] Bytes 4-8 as little-endian uint32: {val4}')
-                    
-            except struct.error as e:
-                log_with_timestamp(f'[UDP Client {addr}] Struct parsing error: {e}')
-            
-            # Look for patterns in the data
-            self.analyze_data_patterns(data, addr)
-            
-        except Exception as e:
-            log_with_timestamp(f'[UDP Client {addr}] Error parsing binary data: {e}')
-    
-    def analyze_data_patterns(self, data, addr):
-        """Analyze patterns in binary data"""
-        try:
-            # Look for repeating patterns
-            log_with_timestamp(f'[UDP Client {addr}] Data length: {len(data)} bytes')
-            
-            # Check for ASCII strings within the data
-            ascii_parts = []
-            current_ascii = ""
-            for i, byte in enumerate(data):
-                if 32 <= byte <= 126:  # Printable ASCII
-                    current_ascii += chr(byte)
-                else:
-                    if len(current_ascii) >= 3:  # Only report strings of 3+ chars
-                        ascii_parts.append((i - len(current_ascii), current_ascii))
-                    current_ascii = ""
-            
-            if current_ascii and len(current_ascii) >= 3:
-                ascii_parts.append((len(data) - len(current_ascii), current_ascii))
-            
-            if ascii_parts:
-                log_with_timestamp(f'[UDP Client {addr}] ASCII strings found:')
-                for pos, text in ascii_parts:
-                    log_with_timestamp(f'[UDP Client {addr}]   Position {pos}: "{text}"')
-            
-            # Look for null-terminated strings
-            null_positions = [i for i, b in enumerate(data) if b == 0]
-            if null_positions:
-                log_with_timestamp(f'[UDP Client {addr}] Null bytes at positions: {null_positions[:10]}...' if len(null_positions) > 10 else f'[UDP Client {addr}] Null bytes at positions: {null_positions}')
-            
-        except Exception as e:
-            log_with_timestamp(f'[UDP Client {addr}] Error analyzing data patterns: {e}')
 
     def process_situation_data(self, data, client_addr):
         """Process situation data"""

@@ -90,81 +90,143 @@ class UDPMessageParser:
         return header + body
 
     @staticmethod
-    def print_detailed_analysis(data, addr):
-        """打印详细的231字节数据分析"""
-        log_with_timestamp(f'[UDP Client {addr}] ===== 详细数据分析 (231字节) =====')
+    def print_message_header(data, addr):
+        """独立显示消息头信息"""
+        log_with_timestamp(f'[UDP Client {addr}] ===== 消息头信息 (26字节) =====')
         
-        # 打印十六进制数据
-        hex_data = data.hex()
-        log_with_timestamp(f'[UDP Client {addr}] 完整十六进制数据: {hex_data}')
+        if len(data) < 26:
+            log_with_timestamp(f'[UDP Client {addr}] 错误：数据长度不足，无法解析消息头 (需要26字节，实际{len(data)}字节)')
+            return None
+            
+        # 显示消息头的十六进制数据
+        header_data = data[:26]
+        hex_header = ' '.join([f'{b:02x}' for b in header_data])
+        log_with_timestamp(f'[UDP Client {addr}] 消息头十六进制: {hex_header}')
         
-        # 分段显示十六进制数据，每行16字节
-        log_with_timestamp(f'[UDP Client {addr}] 十六进制数据分段显示:')
-        for i in range(0, len(data), 16):
-            chunk = data[i:i+16]
+        # 分段显示消息头，每行16字节
+        log_with_timestamp(f'[UDP Client {addr}] 消息头分段显示:')
+        for i in range(0, 26, 16):
+            chunk = header_data[i:i+16]
             hex_chunk = ' '.join([f'{b:02x}' for b in chunk])
             ascii_chunk = ''.join([chr(b) if 32 <= b <= 126 else '.' for b in chunk])
             log_with_timestamp(f'[UDP Client {addr}] {i:04x}: {hex_chunk:<48} |{ascii_chunk}|')
         
-        # 解析消息头
-        if len(data) >= 26:
-            header = UDPMessageParser.parse_message_header(data)
-            if header:
-                log_with_timestamp(f'[UDP Client {addr}] ----- 消息头解析 -----')
-                log_with_timestamp(f'[UDP Client {addr}] 消息ID (MsgID): 0x{header["MsgID"]:04X}')
-                log_with_timestamp(f'[UDP Client {addr}] 源平台代码: 0x{header["SourcePlatCode"]:08X}')
-                log_with_timestamp(f'[UDP Client {addr}] 接收平台代码: 0x{header["ReceivePlatCode"]:08X}')
-                log_with_timestamp(f'[UDP Client {addr}] 序列号: {header["SerialNum"]}')
-                log_with_timestamp(f'[UDP Client {addr}] 创建时间: {header["CreateTime"]} (时间戳)')
-                log_with_timestamp(f'[UDP Client {addr}] 总包数: {header["TotalPacks"]}')
-                log_with_timestamp(f'[UDP Client {addr}] 当前包索引: {header["CurrentIndex"]}')
-                log_with_timestamp(f'[UDP Client {addr}] 数据长度: {header["DataLength"]}')
+        # 解析消息头字段
+        header = UDPMessageParser.parse_message_header(data)
+        if header:
+            log_with_timestamp(f'[UDP Client {addr}] ----- 消息头字段解析 -----')
+            log_with_timestamp(f'[UDP Client {addr}] 消息ID (MsgID): 0x{header["MsgID"]:04X} ({header["MsgID"]})')
+            log_with_timestamp(f'[UDP Client {addr}] 源平台代码: 0x{header["SourcePlatCode"]:08X} ({header["SourcePlatCode"]})')
+            log_with_timestamp(f'[UDP Client {addr}] 接收平台代码: 0x{header["ReceivePlatCode"]:08X} ({header["ReceivePlatCode"]})')
+            log_with_timestamp(f'[UDP Client {addr}] 序列号: {header["SerialNum"]}')
+            log_with_timestamp(f'[UDP Client {addr}] 创建时间: {header["CreateTime"]} (时间戳)')
+            
+            # 转换时间戳为可读时间
+            try:
+                readable_time = datetime.datetime.fromtimestamp(header["CreateTime"] / 1000.0)
+                log_with_timestamp(f'[UDP Client {addr}] 创建时间 (可读): {readable_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]}')
+            except:
+                log_with_timestamp(f'[UDP Client {addr}] 创建时间 (可读): 无法转换')
                 
-                # 如果是试验准备消息
-                if header["MsgID"] == 0x0001:
-                    prep_msg = UDPMessageParser.parse_experiment_prep_message(data)
-                    if prep_msg:
-                        log_with_timestamp(f'[UDP Client {addr}] ----- 试验准备消息内容 -----')
-                        log_with_timestamp(f'[UDP Client {addr}] 试验ID: {prep_msg["ExperimentID"]}')
-                        log_with_timestamp(f'[UDP Client {addr}] 试验文件编号: {prep_msg["ExperimentFileNo"]}')
-                        log_with_timestamp(f'[UDP Client {addr}] 试验名称: "{prep_msg["ExperimentName"]}"')
-                        log_with_timestamp(f'[UDP Client {addr}] 试验文件名: "{prep_msg["ExperimentFileName"]}"')
-                        return prep_msg
+            log_with_timestamp(f'[UDP Client {addr}] 总包数: {header["TotalPacks"]}')
+            log_with_timestamp(f'[UDP Client {addr}] 当前包索引: {header["CurrentIndex"]}')
+            log_with_timestamp(f'[UDP Client {addr}] 数据长度: {header["DataLength"]} 字节')
+            
+        return header
+
+    @staticmethod
+    def print_message_body(data, addr, header=None):
+        """独立显示消息体信息"""
+        if len(data) <= 26:
+            log_with_timestamp(f'[UDP Client {addr}] ===== 消息体信息 =====')
+            log_with_timestamp(f'[UDP Client {addr}] 无消息体数据 (总长度: {len(data)}字节)')
+            return None
+            
+        body_data = data[26:]
+        body_length = len(body_data)
         
-        # 如果不是标准格式，进行通用分析
-        log_with_timestamp(f'[UDP Client {addr}] ----- 通用数据分析 -----')
+        log_with_timestamp(f'[UDP Client {addr}] ===== 消息体信息 ({body_length}字节) =====')
         
-        # 查找ASCII字符串
-        ascii_strings = []
-        current_string = ""
-        start_pos = 0
+        # 显示消息体的十六进制数据
+        hex_body = ' '.join([f'{b:02x}' for b in body_data])
+        log_with_timestamp(f'[UDP Client {addr}] 消息体十六进制: {hex_body}')
         
-        for i, byte in enumerate(data):
-            if 32 <= byte <= 126:  # 可打印ASCII字符
-                if not current_string:
-                    start_pos = i
-                current_string += chr(byte)
+        # 分段显示消息体，每行16字节
+        log_with_timestamp(f'[UDP Client {addr}] 消息体分段显示:')
+        for i in range(0, body_length, 16):
+            chunk = body_data[i:i+16]
+            hex_chunk = ' '.join([f'{b:02x}' for b in chunk])
+            ascii_chunk = ''.join([chr(b) if 32 <= b <= 126 else '.' for b in chunk])
+            offset = i + 26  # 加上消息头的偏移量
+            log_with_timestamp(f'[UDP Client {addr}] {offset:04x}: {hex_chunk:<48} |{ascii_chunk}|')
+        
+        # 根据消息头的MsgID解析消息体
+        if header and header.get('MsgID') == 0x0001:
+            log_with_timestamp(f'[UDP Client {addr}] ----- 试验准备消息体解析 -----')
+            prep_msg = UDPMessageParser.parse_experiment_prep_message(data)
+            if prep_msg:
+                log_with_timestamp(f'[UDP Client {addr}] 试验ID: {prep_msg["ExperimentID"]}')
+                log_with_timestamp(f'[UDP Client {addr}] 试验文件编号: {prep_msg["ExperimentFileNo"]}')
+                log_with_timestamp(f'[UDP Client {addr}] 试验名称: "{prep_msg["ExperimentName"]}"')
+                log_with_timestamp(f'[UDP Client {addr}] 试验文件名: "{prep_msg["ExperimentFileName"]}"')
+                return prep_msg
+        else:
+            # 通用消息体分析
+            log_with_timestamp(f'[UDP Client {addr}] ----- 通用消息体分析 -----')
+            
+            # 查找ASCII字符串
+            ascii_strings = []
+            current_string = ""
+            start_pos = 0
+            
+            for i, byte in enumerate(body_data):
+                if 32 <= byte <= 126:  # 可打印ASCII字符
+                    if not current_string:
+                        start_pos = i + 26  # 加上消息头偏移
+                    current_string += chr(byte)
+                else:
+                    if len(current_string) >= 3:
+                        ascii_strings.append((start_pos, current_string))
+                    current_string = ""
+            
+            # 处理最后一个字符串
+            if len(current_string) >= 3:
+                ascii_strings.append((start_pos, current_string))
+            
+            if ascii_strings:
+                log_with_timestamp(f'[UDP Client {addr}] 发现的ASCII字符串:')
+                for pos, string in ascii_strings:
+                    log_with_timestamp(f'[UDP Client {addr}]   位置 {pos:04x}: "{string}"')
             else:
-                if len(current_string) >= 3:
-                    ascii_strings.append((start_pos, current_string))
-                current_string = ""
+                log_with_timestamp(f'[UDP Client {addr}] 未发现可读的ASCII字符串')
+            
+            # 统计信息
+            zero_bytes = body_data.count(0)
+            max_byte = max(body_data) if body_data else 0
+            min_byte = min(body_data) if body_data else 0
+            
+            log_with_timestamp(f'[UDP Client {addr}] 消息体统计: 长度={body_length}, 零字节={zero_bytes}, 最大值=0x{max_byte:02x}, 最小值=0x{min_byte:02x}')
         
-        if len(current_string) >= 3:
-            ascii_strings.append((start_pos, current_string))
+        return body_data
+
+    @staticmethod
+    def print_detailed_analysis(data, addr):
+        """打印详细的数据分析（分离消息头和消息体）"""
+        log_with_timestamp(f'[UDP Client {addr}] ===== 完整数据分析 ({len(data)}字节) =====')
         
-        if ascii_strings:
-            log_with_timestamp(f'[UDP Client {addr}] 发现的ASCII字符串:')
-            for pos, string in ascii_strings:
-                log_with_timestamp(f'[UDP Client {addr}]   位置 {pos}: "{string}"')
+        # 1. 显示完整数据的十六进制
+        hex_data = data.hex()
+        log_with_timestamp(f'[UDP Client {addr}] 完整十六进制数据: {hex_data}')
         
-        # 分析数据模式
-        log_with_timestamp(f'[UDP Client {addr}] 数据统计:')
-        log_with_timestamp(f'[UDP Client {addr}]   总长度: {len(data)} 字节')
-        log_with_timestamp(f'[UDP Client {addr}]   零字节数量: {data.count(0)}')
-        log_with_timestamp(f'[UDP Client {addr}]   最大字节值: {max(data)}')
-        log_with_timestamp(f'[UDP Client {addr}]   最小字节值: {min(data)}')
+        # 2. 分离显示消息头
+        header = UDPMessageParser.print_message_header(data, addr)
         
-        return None
+        # 3. 分离显示消息体
+        body_result = UDPMessageParser.print_message_body(data, addr, header)
+        
+        log_with_timestamp(f'[UDP Client {addr}] ===== 数据分析完成 =====')
+        
+        return header, body_result
 
 class OnlineDebugger:
     def __init__(self):

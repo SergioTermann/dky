@@ -24,6 +24,148 @@ def log_with_timestamp(message):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {message}")
 
+class UDPMessageParser:
+    """UDP消息解析器"""
+    
+    @staticmethod
+    def parse_message_header(data):
+        """解析UDP消息头"""
+        if len(data) < 26:  # 消息头固定26字节
+            return None
+            
+        # 解析消息头：MsgID(2) + SourcePlatCode(4) + ReceivePlatCode(4) + SerialNum(4) + 
+        #           CreateTime(8) + TotalPacks(1) + CurrentIndex(1) + DataLength(2)
+        header = struct.unpack('<HIIIQBBH', data[:26])
+        return {
+            'MsgID': header[0],
+            'SourcePlatCode': header[1], 
+            'ReceivePlatCode': header[2],
+            'SerialNum': header[3],
+            'CreateTime': header[4],
+            'TotalPacks': header[5],
+            'CurrentIndex': header[6],
+            'DataLength': header[7]
+        }
+    
+    @staticmethod
+    def parse_experiment_prep_message(data):
+        """解析试验准备消息(0x0001)"""
+        if len(data) < 231:  # 消息头26字节 + 消息体205字节 = 231字节
+            return None
+            
+        # ExperimentID(4) + ExperimentFileNo(1) + ExperimentName(100) + ExperimentFileName(100)
+        experiment_id = struct.unpack('<I', data[26:30])[0]
+        experiment_file_no = struct.unpack('<b', data[30:31])[0]
+        experiment_name = data[31:131].rstrip(b'\x00').decode('utf-8', errors='ignore')
+        experiment_file_name = data[131:231].rstrip(b'\x00').decode('utf-8', errors='ignore')
+        
+        return {
+            'ExperimentID': experiment_id,
+            'ExperimentFileNo': experiment_file_no,
+            'ExperimentName': experiment_name,
+            'ExperimentFileName': experiment_file_name
+        }
+    
+    @staticmethod
+    def create_experiment_feedback_message(experiment_id, ready_status=1):
+        """创建试验准备反馈消息(0x0002)"""
+        # 消息头
+        msg_id = 0x0002
+        source_plat = 0x00000001  # 本地平台代码
+        receive_plat = 0x00000000  # 远端平台代码
+        serial_num = int(time.time()) & 0xFFFFFFFF
+        create_time = int(time.time() * 1000)  # 毫秒时间戳
+        total_packs = 1
+        current_index = 1
+        data_length = 5  # ExperimentID(4) + ControlReady(1)
+        
+        # 打包消息头: MsgID(2) + SourcePlatCode(4) + ReceivePlatCode(4) + SerialNum(4) + 
+        #           CreateTime(8) + TotalPacks(1) + CurrentIndex(1) + DataLength(2)
+        header = struct.pack('<HIIIQBBH', msg_id, source_plat, receive_plat, serial_num,
+                           create_time, total_packs, current_index, data_length)
+        
+        # 打包消息体
+        body = struct.pack('<Ib', experiment_id, ready_status)
+        
+        return header + body
+
+    @staticmethod
+    def print_detailed_analysis(data, addr):
+        """打印详细的231字节数据分析"""
+        log_with_timestamp(f'[UDP Client {addr}] ===== 详细数据分析 (231字节) =====')
+        
+        # 打印十六进制数据
+        hex_data = data.hex()
+        log_with_timestamp(f'[UDP Client {addr}] 完整十六进制数据: {hex_data}')
+        
+        # 分段显示十六进制数据，每行16字节
+        log_with_timestamp(f'[UDP Client {addr}] 十六进制数据分段显示:')
+        for i in range(0, len(data), 16):
+            chunk = data[i:i+16]
+            hex_chunk = ' '.join([f'{b:02x}' for b in chunk])
+            ascii_chunk = ''.join([chr(b) if 32 <= b <= 126 else '.' for b in chunk])
+            log_with_timestamp(f'[UDP Client {addr}] {i:04x}: {hex_chunk:<48} |{ascii_chunk}|')
+        
+        # 解析消息头
+        if len(data) >= 26:
+            header = UDPMessageParser.parse_message_header(data)
+            if header:
+                log_with_timestamp(f'[UDP Client {addr}] ----- 消息头解析 -----')
+                log_with_timestamp(f'[UDP Client {addr}] 消息ID (MsgID): 0x{header["MsgID"]:04X}')
+                log_with_timestamp(f'[UDP Client {addr}] 源平台代码: 0x{header["SourcePlatCode"]:08X}')
+                log_with_timestamp(f'[UDP Client {addr}] 接收平台代码: 0x{header["ReceivePlatCode"]:08X}')
+                log_with_timestamp(f'[UDP Client {addr}] 序列号: {header["SerialNum"]}')
+                log_with_timestamp(f'[UDP Client {addr}] 创建时间: {header["CreateTime"]} (时间戳)')
+                log_with_timestamp(f'[UDP Client {addr}] 总包数: {header["TotalPacks"]}')
+                log_with_timestamp(f'[UDP Client {addr}] 当前包索引: {header["CurrentIndex"]}')
+                log_with_timestamp(f'[UDP Client {addr}] 数据长度: {header["DataLength"]}')
+                
+                # 如果是试验准备消息
+                if header["MsgID"] == 0x0001:
+                    prep_msg = UDPMessageParser.parse_experiment_prep_message(data)
+                    if prep_msg:
+                        log_with_timestamp(f'[UDP Client {addr}] ----- 试验准备消息内容 -----')
+                        log_with_timestamp(f'[UDP Client {addr}] 试验ID: {prep_msg["ExperimentID"]}')
+                        log_with_timestamp(f'[UDP Client {addr}] 试验文件编号: {prep_msg["ExperimentFileNo"]}')
+                        log_with_timestamp(f'[UDP Client {addr}] 试验名称: "{prep_msg["ExperimentName"]}"')
+                        log_with_timestamp(f'[UDP Client {addr}] 试验文件名: "{prep_msg["ExperimentFileName"]}"')
+                        return prep_msg
+        
+        # 如果不是标准格式，进行通用分析
+        log_with_timestamp(f'[UDP Client {addr}] ----- 通用数据分析 -----')
+        
+        # 查找ASCII字符串
+        ascii_strings = []
+        current_string = ""
+        start_pos = 0
+        
+        for i, byte in enumerate(data):
+            if 32 <= byte <= 126:  # 可打印ASCII字符
+                if not current_string:
+                    start_pos = i
+                current_string += chr(byte)
+            else:
+                if len(current_string) >= 3:
+                    ascii_strings.append((start_pos, current_string))
+                current_string = ""
+        
+        if len(current_string) >= 3:
+            ascii_strings.append((start_pos, current_string))
+        
+        if ascii_strings:
+            log_with_timestamp(f'[UDP Client {addr}] 发现的ASCII字符串:')
+            for pos, string in ascii_strings:
+                log_with_timestamp(f'[UDP Client {addr}]   位置 {pos}: "{string}"')
+        
+        # 分析数据模式
+        log_with_timestamp(f'[UDP Client {addr}] 数据统计:')
+        log_with_timestamp(f'[UDP Client {addr}]   总长度: {len(data)} 字节')
+        log_with_timestamp(f'[UDP Client {addr}]   零字节数量: {data.count(0)}')
+        log_with_timestamp(f'[UDP Client {addr}]   最大字节值: {max(data)}')
+        log_with_timestamp(f'[UDP Client {addr}]   最小字节值: {min(data)}')
+        
+        return None
+
 class OnlineDebugger:
     def __init__(self):
         self.running = True
@@ -118,78 +260,14 @@ class OnlineDebugger:
         except Exception as e:
             log_with_timestamp(f'Failed to start local UDP server: {e}')
 
-    # 10月17-由嘉伟-udp解包
-    class UDPMessageParser:
-        """UDP消息解析器"""
-        
-        @staticmethod
-        def parse_message_header(data):
-            """解析UDP消息头"""
-            if len(data) < 26:  # 消息头固定26字节
-                return None
-                
-            # 解析消息头：MsgID(2) + SourcePlatCode(4) + ReceivePlatCode(4) + SerialNum(4) + 
-            #           CreateTime(8) + TotalPacks(1) + CurrentIndex(1) + DataLength(2)
-            header = struct.unpack('<HIIIQBBH', data[:26])
-            return {
-                'MsgID': header[0],
-                'SourcePlatCode': header[1], 
-                'ReceivePlatCode': header[2],
-                'SerialNum': header[3],
-                'CreateTime': header[4],
-                'TotalPacks': header[5],
-                'CurrentIndex': header[6],
-                'DataLength': header[7]
-            }
-        
-        @staticmethod
-        def parse_experiment_prep_message(data):
-            """解析试验准备消息(0x0001)"""
-            if len(data) < 231:  # 消息头26字节 + 消息体205字节 = 231字节
-                return None
-                
-            # ExperimentID(4) + ExperimentFileNo(1) + ExperimentName(100) + ExperimentFileName(100)
-            experiment_id = struct.unpack('<I', data[26:30])[0]
-            experiment_file_no = struct.unpack('<b', data[30:31])[0]
-            experiment_name = data[31:131].rstrip(b'\x00').decode('utf-8', errors='ignore')
-            experiment_file_name = data[131:231].rstrip(b'\x00').decode('utf-8', errors='ignore')
-            
-            return {
-                'ExperimentID': experiment_id,
-                'ExperimentFileNo': experiment_file_no,
-                'ExperimentName': experiment_name,
-                'ExperimentFileName': experiment_file_name
-            }
-        
-        @staticmethod
-        def create_experiment_feedback_message(experiment_id, ready_status=1):
-            """创建试验准备反馈消息(0x0002)"""
-            # 消息头
-            msg_id = 0x0002
-            source_plat = 0x00000001  # 本地平台代码
-            receive_plat = 0x00000000  # 远端平台代码
-            serial_num = int(time.time()) & 0xFFFFFFFF
-            create_time = int(time.time() * 1000)  # 毫秒时间戳
-            total_packs = 1
-            current_index = 1
-            data_length = 5  # ExperimentID(4) + ControlReady(1)
-            
-            # 打包消息头: MsgID(2) + SourcePlatCode(4) + ReceivePlatCode(4) + SerialNum(4) + 
-            #           CreateTime(8) + TotalPacks(1) + CurrentIndex(1) + DataLength(2)
-            header = struct.pack('<HIIIQBBH', msg_id, source_plat, receive_plat, serial_num,
-                               create_time, total_packs, current_index, data_length)
-            
-            # 打包消息体
-            body = struct.pack('<Ib', experiment_id, ready_status)
-            
-            return header + body
-
-    # 10月17-由嘉伟-udp解包
     def handle_udp_data(self, data, addr):
         """Handle UDP data from client"""
         log_with_timestamp(f'[UDP Client {addr}] Processing received data...')
         try:
-            # 首先尝试解析UDP消息头
+            # 首先调用详细分析函数
+            UDPMessageParser.print_detailed_analysis(data, addr)
+            
+            # 然后尝试解析UDP消息头
             header = UDPMessageParser.parse_message_header(data)
             if header:
                 msg_id = header['MsgID']
@@ -242,6 +320,8 @@ class OnlineDebugger:
                     
         except Exception as e:
             log_with_timestamp(f'[UDP Client {addr}] Error handling UDP data: {e}')
+            import traceback
+            log_with_timestamp(f'[UDP Client {addr}] Full traceback: {traceback.format_exc()}')
 
     def send_feedback_to_client(self, feedback_data, client_addr):
         """发送反馈消息给客户端"""

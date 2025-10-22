@@ -86,6 +86,42 @@ class UDPMessageParser:
         }
     
     @staticmethod
+    def parse_control_message(data):
+        """解析试验管控消息(0x0003)"""
+        if len(data) < 27:  # 消息头26字节 + 消息体1字节 = 27字节
+            return None
+            
+        # ControlType(1字节)
+        control_type = struct.unpack('<b', data[26:27])[0]
+        
+        return {
+            'ControlType': control_type
+        }
+    
+    @staticmethod
+    def create_control_feedback_message(control_type, control_feedback=1):
+        """创建管控消息结果(0x0004)"""
+        # 消息头
+        msg_id = 0x0004
+        source_plat = 0x00000001  # 本地平台代码
+        receive_plat = 0x00000000  # 远端平台代码
+        serial_num = int(time.time()) & 0xFFFFFFFF
+        create_time = int(time.time() * 1000)  # 毫秒时间戳
+        total_packs = 1
+        current_index = 1
+        data_length = 2  # ControlType(1) + ControlFeedBack(1)
+        
+        # 打包消息头: MsgID(2) + SourcePlatCode(4) + ReceivePlatCode(4) + SerialNum(4) + 
+        #           CreateTime(8) + TotalPacks(1) + CurrentIndex(1) + DataLength(2)
+        header = struct.pack('<HIIIQBBH', msg_id, source_plat, receive_plat, serial_num,
+                           create_time, total_packs, current_index, data_length)
+        
+        # 打包消息体: ControlType(1) + ControlFeedBack(1)
+        body = struct.pack('<bb', control_type, control_feedback)
+        
+        return header + body
+    
+    @staticmethod
     def create_experiment_feedback_message(experiment_id, ready_status=1):
         """创建试验准备反馈消息(0x0002)"""
         # 消息头
@@ -449,6 +485,39 @@ class OnlineDebugger:
                         log_with_timestamp(f'[UDP客户端 {addr}] 节点注册消息已转发到远程服务器')
                     else:
                         log_with_timestamp(f'[UDP客户端 {addr}] 解析节点注册消息失败')
+                
+                # 如果接收到的是试验管控消息
+                elif msg_id == 0x0003:
+                    log_with_timestamp(f'[UDP客户端 {addr}] 接收到试验管控消息')
+                    control_msg = UDPMessageParser.parse_control_message(data)
+                    if control_msg:
+                        control_type = control_msg['ControlType']
+                        
+                        # 解释管控类型
+                        control_type_desc = {
+                            1: "试验开始",
+                            2: "试验暂停",
+                            3: "试验恢复",
+                            4: "试验结束",
+                            5: "一键返航"
+                        }.get(control_type, f"未知管控类型({control_type})")
+                        
+                        log_with_timestamp(f'[UDP客户端 {addr}] 管控类型: {control_type} - {control_type_desc}')
+                        
+                        # 如果是试验开始指令
+                        if control_type == 1:
+                            log_with_timestamp('=' * 50)
+                            log_with_timestamp('启动仿真')
+                            log_with_timestamp('=' * 50)
+                        
+                        # 回复管控消息结果
+                        feedback_msg = UDPMessageParser.create_control_feedback_message(
+                            control_type, control_feedback=1)  # 1=执行成功
+                        self.send_feedback_to_client(feedback_msg, addr)
+                        log_with_timestamp(f'[UDP客户端 {addr}] 已发送管控消息结果反馈')
+                        
+                    else:
+                        log_with_timestamp(f'[UDP客户端 {addr}] 解析试验管控消息失败')
                 
                 else:
                     log_with_timestamp(f'[UDP客户端 {addr}] 不支持的消息类型: 0x{msg_id:04X}')

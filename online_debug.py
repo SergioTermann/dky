@@ -145,6 +145,86 @@ class UDPMessageParser:
         return header + body
 
     @staticmethod
+    def create_platform_status_message(platform_id=1, longitude=116.0, latitude=39.0, height=1000, 
+                                     speed=200, course=90, roll=0, pitch=0, amount=1, kind=1, 
+                                     platform_type=11, commander_id=1, formation_id=1, task=0, 
+                                     energy_remain=80, weapon_kind=0, weapon_amount=0, health_state=0,
+                                     hang_state=0, ir_state=0, laser_state=0, eo_state=0, 
+                                     guide_state=0, comm_state=0, gps_state=0, bd_state=0):
+        """创建无人装备平台与系统状态消息(0x1001)"""
+        # 消息头
+        msg_id = 0x1001
+        source_plat = 0x00000001  # 本地平台代码
+        receive_plat = 0x00000000  # 远端平台代码
+        serial_num = int(time.time()) & 0xFFFFFFFF
+        create_time = int(time.time() * 1000)  # 毫秒时间戳
+        total_packs = 1
+        current_index = 1
+        data_length = 108  # 消息体总长度
+        
+        # 打包消息头
+        header = struct.pack('<HIIIQBBH', msg_id, source_plat, receive_plat, serial_num,
+                           create_time, total_packs, current_index, data_length)
+        
+        # 打包消息体 - 根据表格定义的字段顺序和数据类型
+        body = struct.pack('<Q',      # Time (uint64) - 当前时间
+                          create_time) + \
+               struct.pack('<I',      # ID (uint32) - 平台编号
+                          platform_id) + \
+               struct.pack('<i',      # Longitude (int32) - 经度，1e-6度精度
+                          int(longitude * 1000000)) + \
+               struct.pack('<i',      # Latitude (int32) - 纬度，1e-6度精度
+                          int(latitude * 1000000)) + \
+               struct.pack('<i',      # Height (int32) - 高度，0.01m精度
+                          int(height * 100)) + \
+               struct.pack('<h',      # Speed (int16) - 速度，0.01m/s精度
+                          int(speed * 100)) + \
+               struct.pack('<i',      # Course (int32) - 航向，0.01度精度
+                          int(course * 100)) + \
+               struct.pack('<h',      # Roll (int16) - 横滚，0.01度精度
+                          int(roll * 100)) + \
+               struct.pack('<h',      # Pitch (int16) - 俯仰，0.01度精度
+                          int(pitch * 100)) + \
+               struct.pack('<B',      # Amount (uint8) - 编队内架数
+                          amount) + \
+               struct.pack('<B',      # Kind (int8) - 平台类型
+                          kind) + \
+               struct.pack('<h',      # Type (int16) - 平台型号
+                          platform_type) + \
+               struct.pack('<I',      # CommanderID (uint32) - 指控平台编识号
+                          commander_id) + \
+               struct.pack('<I',      # FormationID (uint32) - 长机编识号
+                          formation_id) + \
+               struct.pack('<B',      # Task (uint8) - 平台任务
+                          task) + \
+               struct.pack('<B',      # EnergyRemain (int8) - 剩余电量
+                          energy_remain) + \
+               struct.pack('<B',      # WeaponKind (int8) - 弹药种类
+                          weapon_kind) + \
+               struct.pack('<B',      # WeaponAmount (uchar) - 弹药数量
+                          weapon_amount) + \
+               struct.pack('<B',      # HealthState (int8) - 整机状态
+                          health_state) + \
+               struct.pack('<B',      # HangState (int8) - 挂点状态
+                          hang_state) + \
+               struct.pack('<B',      # IRState (int8) - 红外探测器状态
+                          ir_state) + \
+               struct.pack('<B',      # LaserState (int8) - 激光探测器状态
+                          laser_state) + \
+               struct.pack('<B',      # EOState (int8) - 可见光探测器状态
+                          eo_state) + \
+               struct.pack('<B',      # GuideState (int8) - 惯导设备状态
+                          guide_state) + \
+               struct.pack('<B',      # CommState (int8) - 通信设备状态
+                          comm_state) + \
+               struct.pack('<B',      # GPSState (int8) - GPS状态
+                          gps_state) + \
+               struct.pack('<B',      # BDState (int8) - 北斗状态
+                          bd_state)
+        
+        return header + body
+
+    @staticmethod
     def create_node_registration_message(node_type=1, node_name="TestNode", reason=""):
         """创建试验节点注册消息(0x0006)"""
         # 消息头
@@ -508,6 +588,12 @@ class OnlineDebugger:
                         if control_type == 1:
                             log_with_timestamp('=' * 50)
                             log_with_timestamp('启动仿真')
+                            log_with_timestamp('=' * 50)
+                        
+                        # 如果是试验结束指令
+                        elif control_type == 4:
+                            log_with_timestamp('=' * 50)
+                            log_with_timestamp('结束仿真')
                             log_with_timestamp('=' * 50)
                         
                         # 回复管控消息结果

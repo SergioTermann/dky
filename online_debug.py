@@ -14,8 +14,9 @@ import datetime
 import struct
 
 # Configuration parameters
-REMOTE_IP = '180.1.80.238'
-REMOTE_PORT = 1010
+# REMOTE_IP = '180.1.80.238'
+REMOTE_IP = '180.1.80.3'
+REMOTE_PORT = 8192
 LOCAL_IP = '180.1.80.241'
 LOCAL_PORT = 5371
 

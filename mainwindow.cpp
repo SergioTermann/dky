@@ -11,6 +11,7 @@ MainWindow::MainWindow(QWidget *parent)
     , currentZoomFactor(1.0)
     , isPaused(false)
     , speedMultiplier(1.0)
+    , pythonProcess(nullptr)
 {
     ui->setupUi(this);
     
@@ -37,6 +38,13 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    // 清理Python进程
+    if (pythonProcess) {
+        pythonProcess->kill();
+        pythonProcess->deleteLater();
+        pythonProcess = nullptr;
+    }
+    
     delete ui;
 }
 
@@ -391,8 +399,8 @@ void MainWindow::on_startSimulationButton_clicked()
     QProcess *process = new QProcess(this);
     QString appDir = QCoreApplication::applicationDirPath();
     
-    // 直接使用源码目录下的 task_allocation.py
-    QString pythonScriptPath = "D:/DKY2/dky/dky/task_allocation.py";
+    // 使用统一的项目根目录常量
+    QString pythonScriptPath = PROJECT_ROOT_DIR + "task_allocation.py";
     
     if (!QFile::exists(pythonScriptPath)) {
         QMessageBox::critical(this, "错误", QString("找不到Python脚本：%1").arg(pythonScriptPath));
@@ -402,13 +410,13 @@ void MainWindow::on_startSimulationButton_clicked()
     }
     
     // 设置工作目录为源码目录
-    process->setWorkingDirectory("D:/DKY2/dky/dky");
+    process->setWorkingDirectory(PROJECT_ROOT_DIR);
     process->setProcessChannelMode(QProcess::MergedChannels);
     process->setProgram("python");
     process->setArguments(QStringList() << pythonScriptPath);
     
     addLogMessage(QString("执行Python脚本：%1").arg(pythonScriptPath), "INFO");
-    addLogMessage(QString("工作目录：D:/DKY2/dky/dky"), "INFO");
+    addLogMessage(QString("工作目录：%1").arg(PROJECT_ROOT_DIR), "INFO");
     
     // 连接输出信号
     connect(process, &QProcess::readyReadStandardOutput,
@@ -877,22 +885,22 @@ void MainWindow::on_onlineDebugButton_clicked()
 {
     addLogMessage("启动在线调试功能...", "INFO");
     
-    // 获取应用程序目录
-    QString appDir = QCoreApplication::applicationDirPath();
-    QString pythonScriptPath = appDir + "/online_debug.py";
+    // 使用统一的项目根目录常量
+    QString pythonScriptPath = PROJECT_ROOT_DIR + "online_debug.py";
     
-    // 检查Python脚本是否存在，如果不存在则创建
-    QFileInfo scriptInfo(pythonScriptPath);
-    if (!scriptInfo.exists()) {
-        addLogMessage("创建Python调试脚本...", "INFO");
-        createPythonDebugScript(pythonScriptPath);
+    // 如果已有进程在运行，先终止
+    if (pythonProcess) {
+        pythonProcess->kill();
+        pythonProcess->deleteLater();
+        pythonProcess = nullptr;
+        addLogMessage("已经杀死进程", "INFO");
     }
     
     // 启动Python脚本
-    QProcess *pythonProcess = new QProcess(this);
+    pythonProcess = new QProcess(this);
     
     // 设置工作目录
-    pythonProcess->setWorkingDirectory(appDir);
+    pythonProcess->setWorkingDirectory(PROJECT_ROOT_DIR);
     
     // 启动Python脚本
     QString pythonCommand = "python";
@@ -900,12 +908,12 @@ void MainWindow::on_onlineDebugButton_clicked()
     arguments << "online_debug.py";
     
     // 连接信号槽以处理进程输出
-    connect(pythonProcess, &QProcess::readyReadStandardOutput, [this, pythonProcess]() {
+    connect(pythonProcess, &QProcess::readyReadStandardOutput, [this]() {
         QByteArray data = pythonProcess->readAllStandardOutput();
         addLogMessage(QString("Python输出: %1").arg(QString::fromUtf8(data).trimmed()), "DEBUG");
     });
     
-    connect(pythonProcess, &QProcess::readyReadStandardError, [this, pythonProcess]() {
+    connect(pythonProcess, &QProcess::readyReadStandardError, [this]() {
         QByteArray data = pythonProcess->readAllStandardError();
         addLogMessage(QString("Python错误: %1").arg(QString::fromUtf8(data).trimmed()), "ERROR");
     });
@@ -917,6 +925,8 @@ void MainWindow::on_onlineDebugButton_clicked()
         } else {
             addLogMessage(QString("Python调试脚本正常退出，退出代码: %1").arg(exitCode), "INFO");
         }
+        pythonProcess->deleteLater();
+        pythonProcess = nullptr;
     });
     
     pythonProcess->start(pythonCommand, arguments);
@@ -924,6 +934,7 @@ void MainWindow::on_onlineDebugButton_clicked()
     if (!pythonProcess->waitForStarted(3000)) {
         addLogMessage("启动Python调试脚本失败: " + pythonProcess->errorString(), "ERROR");
         pythonProcess->deleteLater();
+        pythonProcess = nullptr;
     } else {
         addLogMessage("Python调试脚本启动成功", "INFO");
         addLogMessage("正在连接到远程服务器 180.1.80.238:1010", "INFO");
@@ -1104,5 +1115,71 @@ void MainWindow::createPythonDebugScript(const QString &scriptPath)
         addLogMessage("Python debug script created successfully: " + scriptPath, "INFO");
     } else {
         addLogMessage("Failed to create Python debug script: " + file.errorString(), "ERROR");
+    }
+}
+
+void MainWindow::on_killAllProcessesButton_clicked()
+{
+    addLogMessage("正在杀死所有进程...", "WARNING");
+    
+    int killedCount = 0;
+    
+    // 杀死Python进程
+    if (pythonProcess) {
+        if (pythonProcess->state() != QProcess::NotRunning) {
+            pythonProcess->kill();
+            pythonProcess->waitForFinished(1000);
+            addLogMessage("已杀死Python调试进程", "INFO");
+            killedCount++;
+        }
+        pythonProcess->deleteLater();
+        pythonProcess = nullptr;
+    }
+    
+    // 检查是否有其他Python进程需要杀死
+    QProcess process;
+    process.start("tasklist", QStringList() << "/FI" << "IMAGENAME eq python.exe" << "/FO" << "CSV");
+    process.waitForFinished(2000);
+    
+    if (process.exitCode() == 0) {
+        QByteArray output = process.readAllStandardOutput();
+        QStringList lines = QString::fromUtf8(output).split("\n", QString::SkipEmptyParts);
+        
+        // 跳过标题行
+        for (int i = 1; i < lines.size(); i++) {
+            QString line = lines[i];
+            if (line.contains("python.exe")) {
+                QStringList parts = line.split(",");
+                if (parts.size() >= 2) {
+                    QString pidStr = parts[1].trimmed().replace("\"", "");
+                    bool ok;
+                    int pid = pidStr.toInt(&ok);
+                    if (ok) {
+                        QProcess::execute("taskkill", QStringList() << "/PID" << QString::number(pid) << "/F");
+                        addLogMessage(QString("已杀死Python进程 (PID: %1)").arg(pid), "INFO");
+                        killedCount++;
+                    }
+                }
+            }
+        }
+    }
+    
+    // 检查是否有online_debug.py进程
+    process.start("tasklist", QStringList() << "/FI" << "IMAGENAME eq python.exe" << "/FO" << "CSV");
+    process.waitForFinished(2000);
+    
+    if (process.exitCode() == 0) {
+        QByteArray output = process.readAllStandardOutput();
+        if (output.contains("online_debug")) {
+            QProcess::execute("taskkill", QStringList() << "/IM" << "python.exe" << "/FI" << "WINDOWTITLE eq online_debug*" << "/F");
+            addLogMessage("已杀死所有online_debug相关进程", "INFO");
+            killedCount++;
+        }
+    }
+    
+    if (killedCount > 0) {
+        addLogMessage(QString("成功杀死 %1 个进程").arg(killedCount), "SUCCESS");
+    } else {
+        addLogMessage("没有找到需要杀死的进程", "INFO");
     }
 }

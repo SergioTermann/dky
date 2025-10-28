@@ -20,6 +20,9 @@
 #include "aircraftmodel.h"
 #include "situationgenerator.h"
 
+// 项目根目录常量定义
+const QString PROJECT_ROOT_DIR = "D:/DKY2/dky/dky/";
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -46,6 +49,7 @@ private slots:
     void on_pauseResumeButton_clicked();
     void on_speedComboBox_currentIndexChanged(int index);
     void on_onlineDebugButton_clicked();
+    void on_killAllProcessesButton_clicked();
 
     // 菜单栏槽函数
     void on_actionExit_triggered();
@@ -105,6 +109,9 @@ private:
     bool isPaused;
     double speedMultiplier;
     QString controlFilePath;
+    
+    // Python进程管理
+    QProcess *pythonProcess;
     
     // 辅助函数
     void updateSimulationControlFile();

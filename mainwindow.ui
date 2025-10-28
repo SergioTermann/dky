@@ -600,6 +600,39 @@ QPushButton:disabled {
           </property>
          </widget>
         </item>
+
+        <!-- 杀死所有进程按钮 -->
+        <item>
+         <widget class="QPushButton" name="killAllProcessesButton">
+          <property name="text">
+           <string>💀 杀死进程</string>
+          </property>
+          <property name="styleSheet">
+           <string>QPushButton {
+    background-color: #E53E3E;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 16px;
+    font-weight: bold;
+    font-size: 14px;
+}
+QPushButton:hover {
+    background-color: #C53030;
+}
+QPushButton:pressed {
+    background-color: #9B2C2C;
+}
+QPushButton:disabled {
+    background-color: #A0AEC0;
+    color: #718096;
+}</string>
+          </property>
+          <property name="minimumHeight">
+           <number>50</number>
+          </property>
+         </widget>
+        </item>
         
         <!-- 算法推荐信息 -->
         <item>

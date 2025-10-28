@@ -392,7 +392,7 @@ void MainWindow::on_startSimulationButton_clicked()
     QString appDir = QCoreApplication::applicationDirPath();
     
     // 直接使用源码目录下的 task_allocation.py
-    QString pythonScriptPath = "c:/Users/bafs/Desktop/dky/task_allocation.py";
+    QString pythonScriptPath = "D:/DKY2/dky/dky/task_allocation.py";
     
     if (!QFile::exists(pythonScriptPath)) {
         QMessageBox::critical(this, "错误", QString("找不到Python脚本：%1").arg(pythonScriptPath));
@@ -402,13 +402,13 @@ void MainWindow::on_startSimulationButton_clicked()
     }
     
     // 设置工作目录为源码目录
-    process->setWorkingDirectory("c:/Users/bafs/Desktop/dky");
+    process->setWorkingDirectory("D:/DKY2/dky/dky");
     process->setProcessChannelMode(QProcess::MergedChannels);
     process->setProgram("python");
     process->setArguments(QStringList() << pythonScriptPath);
     
     addLogMessage(QString("执行Python脚本：%1").arg(pythonScriptPath), "INFO");
-    addLogMessage(QString("工作目录：c:/Users/bafs/Desktop/dky"), "INFO");
+    addLogMessage(QString("工作目录：D:/DKY2/dky/dky"), "INFO");
     
     // 连接输出信号
     connect(process, &QProcess::readyReadStandardOutput,

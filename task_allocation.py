@@ -651,7 +651,8 @@ def execute_task_allocation(json_file):
 class DroneSimulation:
     """Simulates drone movements and streams to Tacview"""
 
-    def __init__(self, allocation_result, target_area=(80, 80), area_size=100):
+    def __init__(self, allocation_result, target_area=(80, 80), area_size=100, 
+                 enable_status_broadcast=True, status_broadcast_port=10114):
         self.allocation_result = allocation_result
         self.target_area = target_area
         self.area_size = area_size
@@ -667,6 +668,15 @@ class DroneSimulation:
         self.max_angular_velocity = 45.0  # 最大角速度 (度/秒)
         self.smoothing_factor = 0.15  # 平滑因子 (0-1, 越小越平滑)
         
+        # 态势广播设置
+        self.enable_status_broadcast = enable_status_broadcast
+        self.status_broadcast_port = status_broadcast_port
+        self.status_socket = None
+        
+        # 初始化态势广播套接字
+        if self.enable_status_broadcast:
+            self._init_status_broadcast()
+        
         # Tacview集成
         self.tacview_streamer = TacviewStreamer()
         # 在单独线程中启动Tacview服务器
@@ -681,6 +691,70 @@ class DroneSimulation:
             print("Tacview服务器启动成功，可以连接Tacview客户端到 127.0.0.1:58008")
         else:
             print("Tacview服务器启动失败")
+    
+    def _init_status_broadcast(self):
+        """初始化态势广播UDP套接字"""
+        try:
+            self.status_socket = socket(AF_INET, SOCK_DGRAM)
+            print(f"态势广播已初始化，目标端口: 127.0.0.1:{self.status_broadcast_port}")
+        except Exception as e:
+            print(f"初始化态势广播套接字失败: {e}")
+            self.enable_status_broadcast = False
+    
+    def _broadcast_status(self):
+        """广播当前红方态势数据到本地UDP端口"""
+        if not self.enable_status_broadcast or not self.status_socket:
+            return
+        
+        try:
+            # 构造红方态势数据
+            red_aircraft_list = []
+            
+            for drone_id in self.drone_positions:
+                # 获取无人机的类型（攻击或防御）
+                drone_type = self.allocation_result['initial_positions'][drone_id]['type']
+                
+                # 只发送攻击型无人机（红方）
+                if drone_type == 'attack':
+                    position = self.drone_positions[drone_id]
+                    velocity = self.drone_velocities[drone_id]
+                    heading = self.drone_headings.get(drone_id, 0)
+                    
+                    # 计算速度大小（m/s）
+                    speed = math.sqrt(velocity[0]**2 + velocity[1]**2)
+                    
+                    # 提取平台ID（从 "A1" 提取数字）
+                    platform_id = int(''.join(filter(str.isdigit, drone_id)))
+                    
+                    # 构造飞机数据
+                    aircraft_data = {
+                        'platform_id': platform_id,
+                        'longitude': position[0] / 1000.0,  # 转换为合适的坐标
+                        'latitude': position[1] / 1000.0,
+                        'height': position[2] if len(position) > 2 else 1000,  # 高度（米）
+                        'speed': speed,  # 速度（m/s）
+                        'course': heading,  # 航向（度）
+                        'roll': 0,
+                        'pitch': 0,
+                        'drone_id': drone_id
+                    }
+                    red_aircraft_list.append(aircraft_data)
+            
+            # 发送数据到本地UDP端口
+            if red_aircraft_list:
+                data = json.dumps({
+                    'timestamp': time.time(),
+                    'red_aircraft': red_aircraft_list
+                }, ensure_ascii=False)
+                
+                self.status_socket.sendto(
+                    data.encode('utf-8'),
+                    ('127.0.0.1', self.status_broadcast_port)
+                )
+                
+        except Exception as e:
+            # 静默失败，不影响主仿真
+            pass
 
     def initialize_positions(self):
         """Initialize drone positions based on their distance to target"""
@@ -865,6 +939,10 @@ class DroneSimulation:
             if step % 50 == 0:
                 print(f"仿真进度: {step}/{steps} 步 ({step/steps*100:.1f}%)")
             
+            # 广播红方态势数据（每10步广播一次，减少数据量）
+            # if step % 10 == 0:
+            self._broadcast_status()
+
             # 每步之间增加间隔时间，让仿真更真实
             time.sleep(0.1)  # 每步间隔0.1秒，让Tacview能更好地显示动画
 

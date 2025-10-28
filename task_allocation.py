@@ -655,32 +655,69 @@ class DroneSimulation:
         self.allocation_result = allocation_result
         self.target_area = target_area
         self.area_size = area_size
-        self.drone_positions = {}
-        self.drone_velocities = {}
-        self.drone_accelerations = {}  # 加速度
-        self.drone_headings = {}  # 航向角
-        self.drone_angular_velocities = {}  # 角速度
+        
+        # 仿真控制参数
+        self.control_file_path = "simulation_control.json"
+        self.is_paused = False
+        self.speed_multiplier = 1.0
+        self.last_control_check = time.time()
         
         # 飞行动力学参数
-        self.max_speed = 15.0  # 最大速度 (km/h 转换为仿真单位)
-        self.max_acceleration = 8.0  # 最大加速度
+        self.max_speed = 15.0  # 最大速度 (m/s)
+        self.max_acceleration = 5.0  # 最大加速度 (m/s²)
         self.max_angular_velocity = 45.0  # 最大角速度 (度/秒)
-        self.smoothing_factor = 0.15  # 平滑因子 (0-1, 越小越平滑)
+        self.smoothing_factor = 0.1  # 平滑系数
         
-        # Tacview集成
-        self.tacview_streamer = TacviewStreamer()
-        # 在单独线程中启动Tacview服务器
-        self.tacview_thread = Thread(target=self._start_tacview_server, daemon=True)
-        self.tacview_thread.start()
-        time.sleep(1)  # 等待服务器启动
-    
+        # 无人机状态
+        self.drone_positions = {}
+        self.drone_velocities = {}
+        self.drone_accelerations = {}
+        self.drone_headings = {}
+        self.drone_angular_velocities = {}
+        
+        # Tacview连接
+        self.tacview_streamer = None
+        self._start_tacview_server()
+
     def _start_tacview_server(self):
-        """在单独线程中启动Tacview服务器"""
-        success = self.tacview_streamer.start_server()
-        if success:
-            print("Tacview服务器启动成功，可以连接Tacview客户端到 127.0.0.1:58008")
-        else:
-            print("Tacview服务器启动失败")
+        """Start Tacview server for real-time visualization"""
+        try:
+            self.tacview_streamer = TacviewStreamer()
+            self.tacview_streamer.start_server()
+            print("Tacview服务器已启动，等待连接...")
+        except Exception as e:
+            print(f"启动Tacview服务器失败: {e}")
+            self.tacview_streamer = None
+
+    def check_control_file(self):
+        """检查控制文件并更新仿真状态"""
+        try:
+            if os.path.exists(self.control_file_path):
+                with open(self.control_file_path, 'r', encoding='utf-8') as f:
+                    control_data = json.load(f)
+                    
+                self.is_paused = control_data.get('paused', False)
+                self.speed_multiplier = control_data.get('speed_multiplier', 1.0)
+                
+                # 限制速度倍数在合理范围内
+                self.speed_multiplier = max(0.1, min(10.0, self.speed_multiplier))
+                
+        except Exception as e:
+            # 如果读取控制文件失败，使用默认值
+            self.is_paused = False
+            self.speed_multiplier = 1.0
+
+    def create_default_control_file(self):
+        """创建默认的控制文件"""
+        try:
+            control_data = {
+                'paused': False,
+                'speed_multiplier': 1.0
+            }
+            with open(self.control_file_path, 'w', encoding='utf-8') as f:
+                json.dump(control_data, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"创建控制文件失败: {e}")
 
     def initialize_positions(self):
         """Initialize drone positions based on their distance to target"""
@@ -708,9 +745,30 @@ class DroneSimulation:
 
     def update_positions(self, steps=100):
         """Simulate smooth movement of drones with realistic flight dynamics"""
-        dt = 0.1  # 时间步长 (秒)
+        dt = 0.1  # 基础时间步长 (秒)
         
-        for step in range(steps):
+        step = 0
+        while step < steps:
+            # 每秒检查一次控制文件
+            current_time = time.time()
+            if current_time - self.last_control_check > 1.0:
+                self.check_control_file()
+                self.last_control_check = current_time
+            
+            # 如果暂停，跳过位置更新但继续检查控制文件
+            if self.is_paused:
+                # 每50次循环输出一次暂停状态
+                if int(current_time * 10) % 50 == 0:  # 大约每5秒输出一次
+                    print(f"仿真进度: {step}/{steps} 步 ({step/steps*100:.1f}%) - 状态: 暂停")
+                time.sleep(0.1)
+                continue
+            
+            # 只有在非暂停状态下才递增步数
+            step += 1
+            
+            # 根据速度倍数调整时间步长
+            actual_dt = dt * self.speed_multiplier
+            
             # Calculate group centers
             group_centers = {}
             for group in self.allocation_result['task_groups']:
@@ -781,9 +839,9 @@ class DroneSimulation:
                     angular_accel = np.clip(desired_angular_velocity - angular_velocity, -max_angular_accel, max_angular_accel)
                     
                     # 更新角速度和航向
-                    angular_velocity += angular_accel * dt
+                    angular_velocity += angular_accel * actual_dt
                     angular_velocity = np.clip(angular_velocity, -self.max_angular_velocity, self.max_angular_velocity)
-                    current_heading += angular_velocity * dt
+                    current_heading += angular_velocity * actual_dt
                     
                     # 确保航向角在0-360度范围内
                     if current_heading < 0:
@@ -818,8 +876,8 @@ class DroneSimulation:
                         accel_y = accel_y / accel_magnitude * self.max_acceleration
                     
                     # 更新速度 (考虑惯性)
-                    vx = vx * self.smoothing_factor + (vx + accel_x * dt) * (1 - self.smoothing_factor)
-                    vy = vy * self.smoothing_factor + (vy + accel_y * dt) * (1 - self.smoothing_factor)
+                    vx = vx * self.smoothing_factor + (vx + accel_x * actual_dt) * (1 - self.smoothing_factor)
+                    vy = vy * self.smoothing_factor + (vy + accel_y * actual_dt) * (1 - self.smoothing_factor)
                     
                     # 限制速度
                     speed = math.sqrt(vx**2 + vy**2)
@@ -828,8 +886,8 @@ class DroneSimulation:
                         vy = vy / speed * self.max_speed
                     
                     # 更新位置
-                    new_x = x + vx * dt
-                    new_y = y + vy * dt
+                    new_x = x + vx * actual_dt
+                    new_y = y + vy * actual_dt
                     
                     # 边界处理 (反弹效果)
                     if new_x <= 0 or new_x >= self.area_size:
@@ -863,10 +921,12 @@ class DroneSimulation:
 
             # 每50步输出一次进度
             if step % 50 == 0:
-                print(f"仿真进度: {step}/{steps} 步 ({step/steps*100:.1f}%)")
+                status = "暂停" if self.is_paused else f"运行 (速度: {self.speed_multiplier}x)"
+                print(f"仿真进度: {step}/{steps} 步 ({step/steps*100:.1f}%) - 状态: {status}")
             
-            # 每步之间增加间隔时间，让仿真更真实
-            time.sleep(0.1)  # 每步间隔0.1秒，让Tacview能更好地显示动画
+            # 根据速度倍数调整睡眠时间
+            sleep_time = 0.1 / max(0.1, self.speed_multiplier)
+            time.sleep(sleep_time)
 
     def calculate_performance_metrics(self):
         """Calculate performance metrics for the allocation"""
@@ -912,30 +972,34 @@ class DroneSimulation:
 
     def run_simulation(self, steps=100):
         """Run the full simulation"""
+        # 创建默认控制文件
+        self.create_default_control_file()
+        
         self.initialize_positions()
         print("开始无人机仿真...")
+        print(f"控制文件路径: {self.control_file_path}")
+        print("可以通过界面按钮控制仿真的暂停/继续和速度")
         
         self.update_positions(steps)
         metrics = self.calculate_performance_metrics()
 
-        print("\n仿真性能指标:")
-        print(f"到目标的平均距离: {metrics['avg_distance_to_target']:.2f} km")
-        print("\n组内聚合度 (成员间平均距离):")
+        print("\n=== 仿真性能指标 ===")
+        print(f"平均距离目标: {metrics['avg_distance_to_target']:.2f}")
+        print("编队内聚性:")
         for group_id, cohesion in metrics['group_cohesion'].items():
-            print(f"组 {group_id}: {cohesion:.2f} km")
+            print(f"  编队 {group_id}: {cohesion:.2f}")
 
         print("\n仿真完成！")
         
         # 关闭Tacview连接
-        try:
-            if self.tacview_streamer:
+        if self.tacview_streamer:
+            try:
                 self.tacview_streamer.close()
-            # 等待线程结束
-            if hasattr(self, 'tacview_thread') and self.tacview_thread.is_alive():
-                self.tacview_thread.join(timeout=1)
-        except Exception as e:
-            # 忽略关闭时的错误
-            pass
+            except Exception as e:
+                # 忽略关闭时的错误
+                pass
+        
+        return metrics
 
 
 # 5. Main execution

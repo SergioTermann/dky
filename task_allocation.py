@@ -4,10 +4,12 @@ from typing import List, Dict, Set, Tuple, Union
 from dataclasses import dataclass
 import math
 import json
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 import time
 import sys
+from socket import *
+from struct import pack
+from threading import Thread
+import random
 
 
 # 1. Define data classes
@@ -28,6 +30,161 @@ class TaskGroup:
     attack_drones: List[str]
     shapley_estimate: float
     group_id: int
+
+
+# Tacview Streamer class
+class TacviewStreamer:
+    """Tacview实时数据流处理类"""
+    
+    def __init__(self, local_ip='127.0.0.1', local_port=58008):
+        self.local_ip = local_ip
+        self.local_port = local_port
+        self.socket = None
+        self.client_socket = None
+        self.is_connected = False
+        self.is_streaming = False
+        
+        # Tacview协议数据
+        self.handshake_data1 = 'XtraLib.Stream.0\n'
+        self.handshake_data2 = 'Tacview.RealTimeTelemetry.0\n'
+        self.handshake_data3 = 'alpha_dog_fight\n'
+        
+        # 数据格式
+        self.tel_file_header = "FileType=text/acmi/tacview\nFileVersion=2.2\n"
+        self.tel_reference_time_format = '0,ReferenceTime=%Y-%m-%dT%H:%M:%SZ\n'
+        self.tel_data_format = '#{:.2f}\n{},T={:.7f}|{:.7f}|{:.7f}|{:.1f}|{:.1f}|{:.1f},AGL={:.3f},TAS={:.3f},CAS={:.3f},Type=Air+F-16,Name={},Color={},Coalition={}\n'
+        
+    def start_server(self):
+        """启动Tacview服务器"""
+        try:
+            self.socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
+            self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)  # 允许端口重用
+            self.socket.bind((self.local_ip, self.local_port))
+            self.socket.listen()
+            print(f"Tacview服务器启动，监听 {self.local_ip}:{self.local_port}")
+            
+            # 设置超时，避免无限等待
+            self.socket.settimeout(5.0)
+            
+            try:
+                # 等待客户端连接
+                self.client_socket, addr = self.socket.accept()
+                print(f"Tacview客户端已连接: {addr}")
+                
+                # 发送握手数据
+                self.client_socket.send(self.handshake_data1.encode('utf-8'))
+                self.client_socket.send(self.handshake_data2.encode('utf-8'))
+                self.client_socket.send(self.handshake_data3.encode('utf-8'))
+                self.client_socket.send(b'\x00')
+                
+                # 接收握手响应
+                data = self.client_socket.recv(1024)
+                print(f'握手响应: {data}')
+                
+                # 发送文件头和参考时间
+                self.client_socket.send(self.tel_file_header.encode('utf-8'))
+                current_time = time.strftime(self.tel_reference_time_format, time.gmtime()).encode('utf-8')
+                self.client_socket.send(current_time)
+                
+                self.is_connected = True
+                print('Tacview服务器准备就绪，可以发送数据')
+                return True
+                
+            except timeout:
+                print("等待Tacview客户端连接超时，将继续运行仿真（无Tacview显示）")
+                self.is_connected = False
+                return False
+            
+        except Exception as e:
+            print(f"启动Tacview服务器失败: {e}")
+            return False
+    
+    def send_drone_data(self, drone_id, position, velocity, drone_type, timestamp):
+        """发送无人机数据到Tacview"""
+        if not self.is_connected or not self.client_socket:
+            return False
+            
+        try:
+            # 转换坐标系 (x,y,z -> lon,lat,alt)
+            if len(position) == 3:
+                x, y, z = position
+            else:
+                x, y = position
+                z = 1000 + random.uniform(-100, 100)  # 模拟高度
+            
+            # 简单的坐标转换 (这里可以根据实际需要调整)
+            longitude = (x - 50) * 0.01  # 将x坐标转换为经度
+            latitude = (y - 50) * 0.01   # 将y坐标转换为纬度
+            altitude = z
+            
+            # 姿态角度
+            roll = random.uniform(-5, 5)
+            pitch = random.uniform(-5, 5)
+            
+            # 根据速度向量计算航向角 (yaw)
+            if velocity and len(velocity) >= 2:
+                vx, vy = velocity[0], velocity[1]
+                if abs(vx) > 0.001 or abs(vy) > 0.001:  # 避免除零错误
+                    # 计算航向角 (北为0度，顺时针为正)
+                    # atan2(vx, vy) 给出从北方向顺时针的角度
+                    yaw = math.degrees(math.atan2(vx, vy))
+                    # 确保角度在0-360度范围内
+                    if yaw < 0:
+                        yaw += 360
+                else:
+                    # 如果速度很小，保持之前的航向或使用默认值
+                    yaw = 0
+            else:
+                vx, vy = 0, 0
+                yaw = 0
+            
+            speed = math.sqrt(vx**2 + vy**2)
+            agl = altitude - 10  # 地面高度
+            tas = speed * 3.6  # 转换为km/h
+            cas = tas * 0.9  # 校准空速
+            
+            # 设置颜色和阵营
+            if drone_type == 'attack':
+                color = 'Red'
+                coalition = 'Enemies'
+                name = f'Attack_{drone_id}'
+            else:
+                color = 'Blue'
+                coalition = 'Allies'
+                name = f'Defense_{drone_id}'
+            
+            # 生成唯一ID (基于drone_id)
+            object_id = 3000000 + hash(drone_id) % 100000
+            
+            # 格式化数据
+            data = self.tel_data_format.format(
+                timestamp, object_id, longitude, latitude, altitude, 
+                roll, pitch, yaw, agl, tas, cas, name, color, coalition
+            )
+            
+            # 发送数据
+            self.client_socket.send(data.encode('utf-8'))
+            return True
+            
+        except Exception as e:
+            print(f"发送Tacview数据失败: {e}")
+            return False
+    
+    def close(self):
+        """关闭连接"""
+        self.is_connected = False
+        self.is_streaming = False
+        try:
+            if self.client_socket:
+                self.client_socket.close()
+        except:
+            pass
+        try:
+            if self.socket:
+                self.socket.close()
+        except:
+            pass
+        print("Tacview连接已关闭")
 
 
 # 2. Task Allocation class
@@ -413,6 +570,7 @@ def load_situation_data(json_file):
     
     # 将红方飞机转换为攻击无人机数据
     attack_drones_data = {}
+    attack_initial_positions = {}  # 存储初始位置用于Tacview
     for i, aircraft in enumerate(data.get('red_aircraft', [])):
         # 转换为xyz坐标
         coords = convert_to_xyz(aircraft)
@@ -423,14 +581,23 @@ def load_situation_data(json_file):
         mobility = min(1.0, speed / 1000)  # 假设最大速度为1000
         power = min(1.0, coords['z'] / 10000)  # 假设最大高度为10000
         
-        attack_drones_data[f'A{i+1}'] = {
+        drone_id = f'A{i+1}'
+        attack_drones_data[drone_id] = {
             'mobility': mobility,
             'power': power,
             'distance_to_target': distance
         }
+        
+        # 存储初始位置和速度用于Tacview
+        attack_initial_positions[drone_id] = {
+            'position': (coords['x'], coords['y'], coords['z']),
+            'velocity': (coords['vx'], coords['vy'], coords['vz']),
+            'type': 'attack'
+        }
     
     # 将蓝方飞机转换为防御无人机数据
     defense_drones_data = {}
+    defense_initial_positions = {}  # 存储初始位置用于Tacview
     for i, aircraft in enumerate(data.get('blue_aircraft', [])):
         # 转换为xyz坐标
         coords = convert_to_xyz(aircraft)
@@ -441,18 +608,29 @@ def load_situation_data(json_file):
         mobility = min(1.0, speed / 1000)  # 假设最大速度为1000
         power = min(1.0, coords['z'] / 10000)  # 假设最大高度为10000
         
-        defense_drones_data[f'D{i+1}'] = {
+        drone_id = f'D{i+1}'
+        defense_drones_data[drone_id] = {
             'mobility': mobility,
             'power': power,
             'distance_to_target': distance
         }
+        
+        # 存储初始位置和速度用于Tacview
+        defense_initial_positions[drone_id] = {
+            'position': (coords['x'], coords['y'], coords['z']),
+            'velocity': (coords['vx'], coords['vy'], coords['vz']),
+            'type': 'defense'
+        }
     
-    return attack_drones_data, defense_drones_data
+    # 合并初始位置数据
+    initial_positions = {**attack_initial_positions, **defense_initial_positions}
+    
+    return attack_drones_data, defense_drones_data, initial_positions
 
 def execute_task_allocation(json_file):
     """执行任务分配"""
     # 从JSON文件加载数据
-    attack_drones_data, defense_drones_data = load_situation_data(json_file)
+    attack_drones_data, defense_drones_data, initial_positions = load_situation_data(json_file)
     
     # 创建任务分配系统
     allocator = GameBasedTaskAllocation(attack_drones_data, defense_drones_data)
@@ -460,21 +638,46 @@ def execute_task_allocation(json_file):
     # 执行任务分配
     allocation_result = allocator.execute_task_allocation()
     
+    # 添加初始位置信息到结果中
+    allocation_result['initial_positions'] = initial_positions
+    
     return allocation_result
 
 
 # 4. Simulation class
 class DroneSimulation:
-    """Simulates drone movements and visualizes task allocation results"""
+    """Simulates drone movements and streams to Tacview"""
 
     def __init__(self, allocation_result, target_area=(80, 80), area_size=100):
         self.allocation_result = allocation_result
         self.target_area = target_area
         self.area_size = area_size
         self.drone_positions = {}
-        self.fig, self.ax = None, None
-        self.drone_markers = {}
-        self.group_colors = plt.cm.tab10.colors
+        self.drone_velocities = {}
+        self.drone_accelerations = {}  # 加速度
+        self.drone_headings = {}  # 航向角
+        self.drone_angular_velocities = {}  # 角速度
+        
+        # 飞行动力学参数
+        self.max_speed = 15.0  # 最大速度 (km/h 转换为仿真单位)
+        self.max_acceleration = 8.0  # 最大加速度
+        self.max_angular_velocity = 45.0  # 最大角速度 (度/秒)
+        self.smoothing_factor = 0.15  # 平滑因子 (0-1, 越小越平滑)
+        
+        # Tacview集成
+        self.tacview_streamer = TacviewStreamer()
+        # 在单独线程中启动Tacview服务器
+        self.tacview_thread = Thread(target=self._start_tacview_server, daemon=True)
+        self.tacview_thread.start()
+        time.sleep(1)  # 等待服务器启动
+    
+    def _start_tacview_server(self):
+        """在单独线程中启动Tacview服务器"""
+        success = self.tacview_streamer.start_server()
+        if success:
+            print("Tacview服务器启动成功，可以连接Tacview客户端到 127.0.0.1:58008")
+        else:
+            print("Tacview服务器启动失败")
 
     def initialize_positions(self):
         """Initialize drone positions based on their distance to target"""
@@ -495,69 +698,15 @@ class DroneSimulation:
             y = np.clip(y, 0, self.area_size)
 
             self.drone_positions[drone_id] = (x, y)
-
-    def setup_visualization(self):
-        """Setup the visualization environment"""
-        self.fig, self.ax = plt.subplots(figsize=(10, 10))
-        self.ax.set_xlim(0, self.area_size)
-        self.ax.set_ylim(0, self.area_size)
-
-        # Draw target area
-        target = Rectangle((self.target_area[0] - 5, self.target_area[1] - 5), 10, 10,
-                           color='red', alpha=0.3, label='Target Area')
-        self.ax.add_patch(target)
-
-        # Setup legend for drone types
-        self.ax.plot([], [], 'o', color='blue', markersize=8, label='Defense Drone')
-        self.ax.plot([], [], 'o', color='red', markersize=8, label='Attack Drone')
-
-        self.ax.set_title('Drone Task Allocation Simulation')
-        self.ax.set_xlabel('X Position (km)')
-        self.ax.set_ylabel('Y Position (km)')
-        self.ax.grid(True)
-
-    def draw_drones(self):
-        """Draw all drones with their group assignments"""
-        # Clear previous markers
-        for marker in self.drone_markers.values():
-            if marker in self.ax.collections:
-                marker.remove()
-        self.drone_markers = {}
-
-        # Draw drones by group
-        for i, group in enumerate(self.allocation_result['task_groups']):
-            group_color = self.group_colors[i % len(self.group_colors)]
-
-            # Draw defense drones
-            for drone_id in group['defense_drones']:
-                x, y = self.drone_positions[drone_id]
-                marker = self.ax.scatter(x, y, s=150, color='blue', edgecolor=group_color,
-                                         linewidth=2, marker='o', label=drone_id)
-                self.ax.annotate(drone_id, (x, y), fontsize=8)
-                self.drone_markers[drone_id] = marker
-
-            # Draw attack drones
-            for drone_id in group['attack_drones']:
-                x, y = self.drone_positions[drone_id]
-                marker = self.ax.scatter(x, y, s=150, color='red', edgecolor=group_color,
-                                         linewidth=2, marker='o', label=drone_id)
-                self.ax.annotate(drone_id, (x, y), fontsize=8)
-                self.drone_markers[drone_id] = marker
-
-        # Draw connections between drones in same group
-        for group in self.allocation_result['task_groups']:
-            all_drones = group['defense_drones'] + group['attack_drones']
-            for i, drone1 in enumerate(all_drones):
-                for drone2 in all_drones[i + 1:]:
-                    x1, y1 = self.drone_positions[drone1]
-                    x2, y2 = self.drone_positions[drone2]
-                    self.ax.plot([x1, x2], [y1, y2], 'k--', alpha=0.2)
-
-        plt.legend(loc='upper right')
-        self.fig.canvas.draw()
+            self.drone_velocities[drone_id] = (0, 0)  # 初始速度为0
+            self.drone_accelerations[drone_id] = (0, 0)  # 初始加速度为0
+            self.drone_headings[drone_id] = np.degrees(angle)  # 初始航向角指向目标
+            self.drone_angular_velocities[drone_id] = 0  # 初始角速度为0
 
     def update_positions(self, steps=100):
-        """Simulate movement of drones toward target area based on group coordination"""
+        """Simulate smooth movement of drones with realistic flight dynamics"""
+        dt = 0.1  # 时间步长 (秒)
+        
         for step in range(steps):
             # Calculate group centers
             group_centers = {}
@@ -571,7 +720,7 @@ class DroneSimulation:
                 y_center = np.mean([p[1] for p in positions])
                 group_centers[group['group_id']] = (x_center, y_center)
 
-            # Update positions
+            # Update positions with smooth flight dynamics
             for group in self.allocation_result['task_groups']:
                 group_id = group['group_id']
                 all_drones = group['defense_drones'] + group['attack_drones']
@@ -580,46 +729,141 @@ class DroneSimulation:
                 if not all_drones:
                     continue
 
-                # Move toward group center and target
                 for drone_id in all_drones:
                     drone_type = 'attack' if drone_id in group['attack_drones'] else 'defense'
+                    
+                    # 获取当前状态
                     x, y = self.drone_positions[drone_id]
-
-                    # Weights for movement components
-                    target_weight = 0.03
-                    group_weight = 0.02
-
-                    # Move toward target
-                    dx_target = (self.target_area[0] - x) * target_weight
-                    dy_target = (self.target_area[1] - y) * target_weight
-
-                    # Move toward group center
+                    vx, vy = self.drone_velocities[drone_id]
+                    ax, ay = self.drone_accelerations[drone_id]
+                    current_heading = self.drone_headings[drone_id]
+                    angular_velocity = self.drone_angular_velocities[drone_id]
+                    
+                    # 计算期望方向
+                    # 目标方向
+                    target_dx = self.target_area[0] - x
+                    target_dy = self.target_area[1] - y
+                    target_distance = math.sqrt(target_dx**2 + target_dy**2)
+                    
+                    if target_distance > 0.1:
+                        target_direction = math.degrees(math.atan2(target_dx, target_dy))
+                    else:
+                        target_direction = current_heading
+                    
+                    # 编队方向 (如果有编队中心)
+                    formation_weight = 0.3
                     if group_id in group_centers:
                         gx, gy = group_centers[group_id]
-                        dx_group = (gx - x) * group_weight
-                        dy_group = (gy - y) * group_weight
-                    else:
-                        dx_group, dy_group = 0, 0
-
-                    # Attack drones move faster toward target
+                        formation_dx = gx - x
+                        formation_dy = gy - y
+                        formation_distance = math.sqrt(formation_dx**2 + formation_dy**2)
+                        
+                        if formation_distance > 5.0:  # 只有距离编队中心较远时才考虑编队
+                            formation_direction = math.degrees(math.atan2(formation_dx, formation_dy))
+                            # 混合目标方向和编队方向
+                            target_direction = (target_direction * (1 - formation_weight) + 
+                                              formation_direction * formation_weight)
+                    
+                    # 计算航向角变化 (平滑转向)
+                    heading_diff = target_direction - current_heading
+                    # 处理角度跨越问题
+                    if heading_diff > 180:
+                        heading_diff -= 360
+                    elif heading_diff < -180:
+                        heading_diff += 360
+                    
+                    # 限制角速度
+                    max_angular_accel = 60.0  # 最大角加速度 (度/秒²)
+                    desired_angular_velocity = np.clip(heading_diff * 2.0, -self.max_angular_velocity, self.max_angular_velocity)
+                    angular_accel = np.clip(desired_angular_velocity - angular_velocity, -max_angular_accel, max_angular_accel)
+                    
+                    # 更新角速度和航向
+                    angular_velocity += angular_accel * dt
+                    angular_velocity = np.clip(angular_velocity, -self.max_angular_velocity, self.max_angular_velocity)
+                    current_heading += angular_velocity * dt
+                    
+                    # 确保航向角在0-360度范围内
+                    if current_heading < 0:
+                        current_heading += 360
+                    elif current_heading >= 360:
+                        current_heading -= 360
+                    
+                    # 计算期望速度 (基于当前航向)
+                    heading_rad = math.radians(current_heading)
+                    
+                    # 根据无人机类型设置不同的速度
                     if drone_type == 'attack':
-                        dx_target *= 1.5
-                        dy_target *= 1.5
-
-                    # Update position
-                    new_x = x + dx_target + dx_group + np.random.normal(0, 0.2)
-                    new_y = y + dy_target + dy_group + np.random.normal(0, 0.2)
-
-                    # Ensure within boundaries
-                    new_x = np.clip(new_x, 0, self.area_size)
-                    new_y = np.clip(new_y, 0, self.area_size)
-
+                        desired_speed = self.max_speed * 0.8  # 攻击无人机速度较快
+                    else:
+                        desired_speed = self.max_speed * 0.6  # 防御无人机速度较慢
+                    
+                    # 根据距离目标的远近调整速度
+                    if target_distance < 10:
+                        desired_speed *= 0.5  # 接近目标时减速
+                    
+                    desired_vx = desired_speed * math.sin(heading_rad)
+                    desired_vy = desired_speed * math.cos(heading_rad)
+                    
+                    # 计算加速度 (平滑加速)
+                    accel_x = (desired_vx - vx) * 2.0  # 加速度系数
+                    accel_y = (desired_vy - vy) * 2.0
+                    
+                    # 限制加速度
+                    accel_magnitude = math.sqrt(accel_x**2 + accel_y**2)
+                    if accel_magnitude > self.max_acceleration:
+                        accel_x = accel_x / accel_magnitude * self.max_acceleration
+                        accel_y = accel_y / accel_magnitude * self.max_acceleration
+                    
+                    # 更新速度 (考虑惯性)
+                    vx = vx * self.smoothing_factor + (vx + accel_x * dt) * (1 - self.smoothing_factor)
+                    vy = vy * self.smoothing_factor + (vy + accel_y * dt) * (1 - self.smoothing_factor)
+                    
+                    # 限制速度
+                    speed = math.sqrt(vx**2 + vy**2)
+                    if speed > self.max_speed:
+                        vx = vx / speed * self.max_speed
+                        vy = vy / speed * self.max_speed
+                    
+                    # 更新位置
+                    new_x = x + vx * dt
+                    new_y = y + vy * dt
+                    
+                    # 边界处理 (反弹效果)
+                    if new_x <= 0 or new_x >= self.area_size:
+                        vx = -vx * 0.8  # 反弹并减速
+                        new_x = np.clip(new_x, 0, self.area_size)
+                    if new_y <= 0 or new_y >= self.area_size:
+                        vy = -vy * 0.8  # 反弹并减速
+                        new_y = np.clip(new_y, 0, self.area_size)
+                    
+                    # 更新所有状态
                     self.drone_positions[drone_id] = (new_x, new_y)
+                    self.drone_velocities[drone_id] = (vx, vy)
+                    self.drone_accelerations[drone_id] = (accel_x, accel_y)
+                    self.drone_headings[drone_id] = current_heading
+                    self.drone_angular_velocities[drone_id] = angular_velocity
+                    
+                    # 发送Tacview数据
+                    if self.tacview_streamer and self.tacview_streamer.is_connected:
+                        try:
+                            # 转换为Tacview坐标系 (经纬度和高度)
+                            position = (new_x, new_y, 1000 + np.random.uniform(-50, 50))  # 添加高度变化
+                            velocity = (vx * 10, vy * 10, 0)  # 适当放大速度以便在Tacview中可见
+                            timestamp = time.time()
+                            
+                            self.tacview_streamer.send_drone_data(
+                                drone_id, position, velocity, drone_type, timestamp
+                            )
+                        except Exception as e:
+                            # 忽略Tacview发送错误，继续仿真
+                            pass
 
-            # Update visualization every 5 steps
-            if step % 5 == 0:
-                self.draw_drones()
-                plt.pause(0.1)
+            # 每50步输出一次进度
+            if step % 50 == 0:
+                print(f"仿真进度: {step}/{steps} 步 ({step/steps*100:.1f}%)")
+            
+            # 每步之间增加间隔时间，让仿真更真实
+            time.sleep(0.1)  # 每步间隔0.1秒，让Tacview能更好地显示动画
 
     def calculate_performance_metrics(self):
         """Calculate performance metrics for the allocation"""
@@ -666,37 +910,68 @@ class DroneSimulation:
     def run_simulation(self, steps=100):
         """Run the full simulation"""
         self.initialize_positions()
-        self.setup_visualization()
-        self.draw_drones()
-        plt.pause(1)  # Initial pause to show starting positions
-
+        print("开始无人机仿真...")
+        
         self.update_positions(steps)
         metrics = self.calculate_performance_metrics()
 
-        print("\nSimulation Performance Metrics:")
-        print(f"Average distance to target: {metrics['avg_distance_to_target']:.2f} km")
-        print("\nGroup cohesion (avg distance between members):")
+        print("\n仿真性能指标:")
+        print(f"到目标的平均距离: {metrics['avg_distance_to_target']:.2f} km")
+        print("\n组内聚合度 (成员间平均距离):")
         for group_id, cohesion in metrics['group_cohesion'].items():
-            print(f"Group {group_id}: {cohesion:.2f} km")
+            print(f"组 {group_id}: {cohesion:.2f} km")
 
-        plt.show()
+        print("\n仿真完成！")
+        
+        # 关闭Tacview连接
+        try:
+            if self.tacview_streamer:
+                self.tacview_streamer.close()
+            # 等待线程结束
+            if hasattr(self, 'tacview_thread') and self.tacview_thread.is_alive():
+                self.tacview_thread.join(timeout=1)
+        except Exception as e:
+            # 忽略关闭时的错误
+            pass
 
 
 # 5. Main execution
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("[错误] 请提供态势文件路径作为参数")
-        print("用法: python task_allocation.py <态势文件路径>")
-        sys.exit(1)
-        
-    situation_file = sys.argv[1]
-    allocation_result = execute_task_allocation(situation_file)
+    # 检查命令行参数
+    if len(sys.argv) > 1:
+        situation_file = sys.argv[1]
+        print(f"使用指定的态势文件: {situation_file}")
+    else:
+        situation_file = 'situation.json'
+        print(f"使用默认的态势文件: {situation_file}")
     
-    # Save results to JSON
-    with open('task_allocation_output.json', 'w', encoding='utf-8') as f:
-        json.dump(allocation_result, f, indent=2, ensure_ascii=False)
+    # 检查文件是否存在
+    import os
+    if not os.path.exists(situation_file):
+        print(f"错误：找不到态势文件 {situation_file}")
+        sys.exit(1)
+    
+    try:
+        # 执行任务分配
+        allocation_result = execute_task_allocation(situation_file)
+        
+        # 保存结果到JSON文件
+        with open('task_allocation_output.json', 'w', encoding='utf-8') as f:
+            json.dump(allocation_result, f, indent=2, ensure_ascii=False)
+        
+        print(f"任务分配结果已保存到 task_allocation_output.json")
 
-    # Run the simulation with the results
-    print("Starting drone simulation...")
-    simulation = DroneSimulation(allocation_result)
-    simulation.run_simulation(steps=50)
+        # 运行仿真
+        print("开始无人机任务分配仿真...")
+        print("启用Tacview模式 - 请在Tacview中连接到 127.0.0.1:58008")
+        
+        simulation = DroneSimulation(allocation_result)
+        
+        # 使用默认的仿真步数（减少步数以配合较长的间隔时间）
+        simulation.run_simulation(steps=1000)
+        
+    except Exception as e:
+        print(f"执行过程中发生错误: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)

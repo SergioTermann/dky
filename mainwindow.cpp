@@ -820,7 +820,7 @@ void MainWindow::updateSimulationControlFile()
 {
     QJsonObject controlObj;
     controlObj["paused"] = isPaused;
-    controlObj["speed"] = speedMultiplier;
+    controlObj["speed_multiplier"] = speedMultiplier;  // 修改键名以匹配Python脚本
     controlObj["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
     
     QJsonDocument doc(controlObj);
@@ -829,6 +829,12 @@ void MainWindow::updateSimulationControlFile()
     if (file.open(QIODevice::WriteOnly)) {
         file.write(doc.toJson());
         file.close();
+        
+        // 添加日志信息
+        QString status = isPaused ? "暂停" : "运行";
+        addLogMessage(QString("更新仿真控制: %1, 速度: %2x").arg(status).arg(speedMultiplier), "INFO");
+    } else {
+        addLogMessage("无法写入仿真控制文件", "ERROR");
     }
 }
 

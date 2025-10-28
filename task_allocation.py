@@ -10,6 +10,9 @@ from socket import *
 from struct import pack
 from threading import Thread
 import random
+import tkinter as tk
+from tkinter import filedialog
+import os
 
 
 # 1. Define data classes
@@ -936,14 +939,43 @@ class DroneSimulation:
 
 
 # 5. Main execution
+def select_json_file():
+    """使用文件对话框选择JSON文件"""
+    # 创建一个隐藏的根窗口
+    root = tk.Tk()
+    root.withdraw()  # 隐藏主窗口
+    
+    # 打开文件选择对话框
+    file_path = filedialog.askopenfilename(
+        title="选择态势JSON文件",
+        filetypes=[
+            ("JSON文件", "*.json"),
+            ("所有文件", "*.*")
+        ],
+        initialdir=os.getcwd()  # 默认打开当前目录
+    )
+    
+    # 销毁根窗口
+    root.destroy()
+    
+    return file_path
+
+
 if __name__ == "__main__":
     # 检查命令行参数
     if len(sys.argv) > 1:
         situation_file = sys.argv[1]
         print(f"使用指定的态势文件: {situation_file}")
     else:
-        situation_file = 'situation.json'
-        print(f"使用默认的态势文件: {situation_file}")
+        # 弹出文件选择对话框
+        print("请选择态势JSON文件...")
+        situation_file = select_json_file()
+        
+        if not situation_file:
+            print("未选择文件，程序退出。")
+            sys.exit(0)
+        
+        print(f"选择的态势文件: {situation_file}")
     
     # 检查文件是否存在
     import os

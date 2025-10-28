@@ -380,129 +380,35 @@ void MainWindow::on_clearLogButton_clicked()
 
 void MainWindow::on_startSimulationButton_clicked()
 {
-    // 选择态势文件
-    QString fileName = QFileDialog::getOpenFileName(this,
-                                                    "选择态势文件",
-                                                    QDir::currentPath(),
-                                                    "JSON Files (*.json)");
-
-    if (fileName.isEmpty()) {
-        addLogMessage("用户取消了文件选择操作", "INFO");
-        return;
-    }
-
-    // 获取红蓝双方飞机数量
-    int redCount = redAircraftModel->getAircraftList().size();
-    int blueCount = blueAircraftModel->getAircraftList().size();
-
-    // 读取态势文件
-    QFile file(fileName);
-    if (!file.open(QIODevice::ReadOnly)) {
-        QMessageBox::critical(this, "错误", "无法打开态势文件");
-        addLogMessage(QString("态势文件读取失败：%1").arg(fileName), "ERROR");
-        return;
-    }
-
-    QByteArray data = file.readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    file.close();
-
-    if (!doc.isObject()) {
-        QMessageBox::critical(this, "错误", "态势文件格式错误");
-        addLogMessage("态势文件格式错误：不是有效的JSON对象", "ERROR");
-        return;
-    }
-
-    QJsonObject rootObj = doc.object();
-    
-    // 读取红蓝方数据
-    QList<Aircraft> redList;
-    QJsonArray redArray = rootObj["red_aircraft"].toArray();
-    for (const auto& value : redArray) {
-        if (value.isObject()) {
-            Aircraft aircraft = Aircraft::fromJson(value.toObject());
-            redList.append(aircraft);
-        }
-    }
-
-    QList<Aircraft> blueList;
-    QJsonArray blueArray = rootObj["blue_aircraft"].toArray();
-    for (const auto& value : blueArray) {
-        if (value.isObject()) {
-            Aircraft aircraft = Aircraft::fromJson(value.toObject());
-            blueList.append(aircraft);
-        }
-    }
-
-    //// 检查数据有效性
-    if (blueList.isEmpty()) {
-        QMessageBox::warning(this, "警告", "态势文件中没有蓝方数据");
-        addLogMessage("推演失败：态势文件中没有蓝方数据", "ERROR");
-        return;
-    }
-
-    if (redList.isEmpty()) {
-        QMessageBox::warning(this, "警告", "态势文件中没有红方数据");
-        addLogMessage("推演失败：态势文件中没有红方数据", "ERROR");
-        return;
-    }
-
-    // 更新界面数据
-    redAircraftModel->setAircraftList(redList);
-    blueAircraftModel->setAircraftList(blueList);
-    
-    addLogMessage(QString("成功读取态势文件：红方%1架，蓝方%2架").arg(redList.size()).arg(blueList.size()), "SUCCESS");
-
     // 启用推演控制按钮并初始化控制文件
     enableSimulationControls(true);
     updateSimulationControlFile();
     
-    // 根据飞机数量选择调用的Python文件
-    QString pythonFile;
-    if (redList.size() == 1 && blueList.size() == 1) {
-        pythonFile = "jiehe.py";
-        addLogMessage("1对1态势，调用jiehe.py进行推演", "INFO");
-    } else {
-        pythonFile = "task_allocation.py";
-        addLogMessage(QString("%1对%2态势，调用task_allocation.py进行推演").arg(redList.size()).arg(blueList.size()), "INFO");
-    }
+    // 直接调用 task_allocation.py
+    addLogMessage("开始调用 task_allocation.py 进行任务分配推演", "INFO");
 
     // 调用Python文件
     QProcess *process = new QProcess(this);
     QString appDir = QCoreApplication::applicationDirPath();
     
-    // 查找Python脚本（先尝试exe目录，再尝试源码目录）
-    QString pythonScriptPath;
-    QStringList searchPaths;
-    searchPaths << appDir  // exe所在目录
-                << appDir + "/.."  // 父目录
-                << appDir + "/../../JM"  // 源码目录（从build目录）
-                << QDir::currentPath()  // 当前工作目录
-                << QDir::currentPath() + "/JM";  // 当前目录下的JM
+    // 直接使用源码目录下的 task_allocation.py
+    QString pythonScriptPath = "c:/Users/bafs/Desktop/dky/task_allocation.py";
     
-    for (const QString &path : searchPaths) {
-        QString testPath = QDir(path).absoluteFilePath(pythonFile);
-        if (QFile::exists(testPath)) {
-            pythonScriptPath = testPath;
-            break;
-        }
-    }
-    
-    if (pythonScriptPath.isEmpty()) {
-        QMessageBox::critical(this, "错误", QString("找不到Python脚本：%1").arg(pythonFile));
-        addLogMessage(QString("找不到Python脚本：%1").arg(pythonFile), "ERROR");
+    if (!QFile::exists(pythonScriptPath)) {
+        QMessageBox::critical(this, "错误", QString("找不到Python脚本：%1").arg(pythonScriptPath));
+        addLogMessage(QString("找不到Python脚本：%1").arg(pythonScriptPath), "ERROR");
         enableSimulationControls(false);
         return;
     }
     
-    // 设置工作目录为exe所在目录（控制文件在这里）
-    process->setWorkingDirectory(appDir);
+    // 设置工作目录为源码目录
+    process->setWorkingDirectory("c:/Users/bafs/Desktop/dky");
     process->setProcessChannelMode(QProcess::MergedChannels);
     process->setProgram("python");
-    process->setArguments(QStringList() << pythonScriptPath << fileName);
+    process->setArguments(QStringList() << pythonScriptPath);
     
     addLogMessage(QString("执行Python脚本：%1").arg(pythonScriptPath), "INFO");
-    addLogMessage(QString("工作目录：%1").arg(appDir), "INFO");
+    addLogMessage(QString("工作目录：c:/Users/bafs/Desktop/dky"), "INFO");
     
     // 连接输出信号
     connect(process, &QProcess::readyReadStandardOutput,

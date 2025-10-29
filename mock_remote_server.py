@@ -113,7 +113,7 @@ class MockRemoteServer:
             offset += 1
             
             # Kind (int8, 1字节)
-            kind = struct.unpack('<B', data[offset:offset+1])[0]
+            kind = struct.unpack('<b', data[offset:offset+1])[0]
             offset += 1
             
             # Type (int16, 2字节)
@@ -133,15 +133,15 @@ class MockRemoteServer:
             offset += 1
             
             # EnergyRemain (int8, 1字节)
-            energy_remain = struct.unpack('<B', data[offset:offset+1])[0]
+            energy_remain = struct.unpack('<b', data[offset:offset+1])[0]
             offset += 1
             
             # 其余字段...
-            weapon_kind = struct.unpack('<B', data[offset:offset+1])[0]
+            weapon_kind = struct.unpack('<b', data[offset:offset+1])[0]
             offset += 1
             weapon_amount = struct.unpack('<B', data[offset:offset+1])[0]
             offset += 1
-            health_state = struct.unpack('<B', data[offset:offset+1])[0]
+            health_state = struct.unpack('<b', data[offset:offset+1])[0]
             
             return {
                 'Time': msg_time,

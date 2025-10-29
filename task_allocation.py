@@ -702,19 +702,22 @@ class DroneSimulation:
             self.enable_status_broadcast = False
     
     def _broadcast_status(self):
-        """广播当前红方态势数据到本地UDP端口"""
+        """广播当前红方和蓝方态势数据到本地UDP端口"""
         if not self.enable_status_broadcast or not self.status_socket:
             return
         
         try:
             # 构造红方态势数据
             red_aircraft_list = []
+
+            # 构造蓝方目标态势数据（使用实际的防御型无人机）
+            blue_targets_list = []
             
             for drone_id in self.drone_positions:
                 # 获取无人机的类型（攻击或防御）
                 drone_type = self.allocation_result['initial_positions'][drone_id]['type']
                 
-                # 只发送攻击型无人机（红方）
+                # 红方
                 if drone_type == 'attack':
                     position = self.drone_positions[drone_id]
                     velocity = self.drone_velocities[drone_id]
@@ -739,18 +742,46 @@ class DroneSimulation:
                         'drone_id': drone_id
                     }
                     red_aircraft_list.append(aircraft_data)
+
+                # 蓝方目标
+                if drone_type == 'defense':
+                    position = self.drone_positions[drone_id]
+                    velocity = self.drone_velocities[drone_id]
+                    heading = self.drone_headings.get(drone_id, 0)
+                    
+                    # 计算速度大小（m/s）
+                    speed = math.sqrt(velocity[0]**2 + velocity[1]**2)
+                    
+                    # 提取目标ID（从 "D1" 提取数字）
+                    target_id = int(''.join(filter(str.isdigit, drone_id)))
+                    
+                    # 构造目标数据
+                    target_data = {
+                        'target_id': target_id,
+                        'longitude': position[0] / 1000.0,  # 转换为合适的坐标
+                        'latitude': position[1] / 1000.0,
+                        'height': position[2] if len(position) > 2 else 1000,  # 高度（米）
+                        'speed': speed,  # 速度（m/s）
+                        'course': heading,  # 航向（度）
+                        'roll': 0,
+                        'pitch': 0,
+                        'target_kind': 5,  # 目标类型：5-无人机
+                        'drone_id': drone_id
+                    }
+                    blue_targets_list.append(target_data)
             
+         
             # 发送数据到本地UDP端口
-            if red_aircraft_list:
-                data = json.dumps({
-                    'timestamp': time.time(),
-                    'red_aircraft': red_aircraft_list
-                }, ensure_ascii=False)
-                
-                self.status_socket.sendto(
-                    data.encode('utf-8'),
-                    ('127.0.0.1', self.status_broadcast_port)
-                )
+            data = json.dumps({
+                'timestamp': time.time(),
+                'red_aircraft': red_aircraft_list,
+                'blue_targets': blue_targets_list
+            }, ensure_ascii=False)
+            
+            self.status_socket.sendto(
+                data.encode('utf-8'),
+                ('127.0.0.1', self.status_broadcast_port)
+            )
                 
         except Exception as e:
             # 静默失败，不影响主仿真

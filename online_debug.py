@@ -14,13 +14,12 @@ import datetime
 import struct
 import subprocess
 
-# Configuration parameters
-# 远端服务器配置（测试模式：使用本地地址）
-REMOTE_IP = '127.0.0.1'  # 测试模式：本地模拟服务器 | 生产模式：'180.1.80.242'
+# QT与DKY通信地址
+REMOTE_IP = '127.0.0.1'  #'180.1.80.242'  or '127.0.0.1'
 REMOTE_PORT = 1001
-LOCAL_IP = '127.0.0.1'  # 测试模式：本地地址 | 生产模式：'180.1.80.129'
+LOCAL_IP = '127.0.0.1'  #'180.1.80.129'  or '127.0.0.1'
 LOCAL_PORT = 10113
-flag = 0
+
 
 def log_with_timestamp(message):
     """Print message with timestamp"""
@@ -195,7 +194,7 @@ class UDPMessageParser:
                           int(pitch * 100)) + \
                struct.pack('<B',      # Amount (uint8) - 编队内架数
                           amount) + \
-               struct.pack('<B',      # Kind (int8) - 平台类型
+               struct.pack('<b',      # Kind (int8) - 平台类型
                           kind) + \
                struct.pack('<h',      # Type (int16) - 平台型号
                           platform_type) + \
@@ -205,32 +204,75 @@ class UDPMessageParser:
                           formation_id) + \
                struct.pack('<B',      # Task (uint8) - 平台任务
                           task) + \
-               struct.pack('<B',      # EnergyRemain (int8) - 剩余电量
+               struct.pack('<b',      # EnergyRemain (int8) - 剩余电量
                           energy_remain) + \
-               struct.pack('<B',      # WeaponKind (int8) - 弹药种类
+               struct.pack('<b',      # WeaponKind (int8) - 弹药种类
                           weapon_kind) + \
                struct.pack('<B',      # WeaponAmount (uchar) - 弹药数量
                           weapon_amount) + \
-               struct.pack('<B',      # HealthState (int8) - 整机状态
+               struct.pack('<b',      # HealthState (int8) - 整机状态
                           health_state) + \
-               struct.pack('<B',      # HangState (int8) - 挂点状态
+               struct.pack('<b',      # HangState (int8) - 挂点状态
                           hang_state) + \
-               struct.pack('<B',      # IRState (int8) - 红外探测器状态
+               struct.pack('<b',      # IRState (int8) - 红外探测器状态
                           ir_state) + \
-               struct.pack('<B',      # LaserState (int8) - 激光探测器状态
+               struct.pack('<b',      # LaserState (int8) - 激光探测器状态
                           laser_state) + \
-               struct.pack('<B',      # EOState (int8) - 可见光探测器状态
+               struct.pack('<b',      # EOState (int8) - 可见光探测器状态
                           eo_state) + \
-               struct.pack('<B',      # GuideState (int8) - 惯导设备状态
+               struct.pack('<b',      # GuideState (int8) - 惯导设备状态
                           guide_state) + \
-               struct.pack('<B',      # CommState (int8) - 通信设备状态
+               struct.pack('<b',      # CommState (int8) - 通信设备状态
                           comm_state) + \
-               struct.pack('<B',      # GPSState (int8) - GPS状态
+               struct.pack('<b',      # GPSState (int8) - GPS状态
                           gps_state) + \
-               struct.pack('<B',      # BDState (int8) - 北斗状态
+               struct.pack('<b',      # BDState (int8) - 北斗状态
                           bd_state)
         
         return header + body
+
+    @staticmethod
+    def create_target_status_message(target_id=1, longitude=116.0, latitude=39.0, height=1000,
+                                   speed=200, course=90, roll=0, pitch=0, target_kind=1):
+        """创建蓝方目标运动状态消息(0x1000)"""
+        # 消息头
+        msg_id = 0x1000
+        source_plat = 0x00000001  # 本地平台代码
+        receive_plat = 0x00000000  # 远端平台代码
+        serial_num = int(time.time()) & 0xFFFFFFFF
+        create_time = int(time.time() * 1000)  # 毫秒时间戳
+        total_packs = 1
+        current_index = 1
+        data_length = 35  # 消息体总长度
+        
+        # 打包消息头
+        header = struct.pack('<HIIIQBBH', msg_id, source_plat, receive_plat, serial_num,
+                           create_time, total_packs, current_index, data_length)
+        
+        # 打包消息体 - 根据表格定义的字段顺序和数据类型
+        body = struct.pack('<Q',      # Time (uint64) - 当前时间，自1970.1.1 0:0:0开始的毫秒数
+                          create_time) + \
+               struct.pack('<I',      # TargetID (uint32) - 目标平台编号，0x0000至0xffff
+                          target_id) + \
+               struct.pack('<i',      # Longitude (int32) - 经度，1e-6度精度
+                          int(longitude * 1000000)) + \
+               struct.pack('<i',      # Latitude (int32) - 纬度，1e-6度精度
+                          int(latitude * 1000000)) + \
+               struct.pack('<i',      # Height (int32) - 高度，0.01m精度
+                          int(height * 100)) + \
+               struct.pack('<h',      # Speed (int16) - 速度，0.01m/s精度
+                          int(speed * 100)) + \
+               struct.pack('<i',      # Course (int32) - 航向，0.01度精度
+                          int(course * 100)) + \
+               struct.pack('<h',      # Roll (int16) - 横滚角，0.01度精度(-180度,+180度)
+                          int(roll * 100)) + \
+               struct.pack('<h',      # Pitch (int16) - 俯仰角，0.01度精度(-90度,+90度)
+                          int(pitch * 100)) + \
+               struct.pack('<b',      # TargetKind (int8) - 目标类型
+                          target_kind)  # 0-无报告,1-电子侦察机,2-预警机,3-歼击机,4-直升机,5-无人机,6-空地/空舰导弹
+        
+        return header + body
+
 
     @staticmethod
     def create_node_registration_message(node_type=1, node_name="TestNode", reason=""):
@@ -280,35 +322,31 @@ class OnlineDebugger:
         self.remote_address = (REMOTE_IP, REMOTE_PORT)
         self.client_addresses = set()  # Track unique client addresses
         self.status_broadcast_port = 10114  # 接收态势数据的端口
-        log_with_timestamp("在线调试器已初始化，使用UDP通信协议")
-        log_with_timestamp(f"目标远程服务器: {REMOTE_IP}:{REMOTE_PORT}")
+        log_with_timestamp(f"DKY远端地址: {REMOTE_IP}:{REMOTE_PORT}")
         log_with_timestamp(f"本地监听地址: {LOCAL_IP}:{LOCAL_PORT}")
-        log_with_timestamp(f"态势数据接收端口: 127.0.0.1:{self.status_broadcast_port}")
+        log_with_timestamp(f"online_debug.py与task_allocation.py脚本之间通信端口: 127.0.0.1:{self.status_broadcast_port}")
 
         self.start_flag = False
 
     def connect_to_remote(self):
         """Create UDP socket for remote communication"""
-        log_with_timestamp("正在创建远程通信UDP套接字...")
         try:
             self.remote_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             log_with_timestamp("UDP套接字创建成功")
             
             # Test connectivity by sending a test message
             test_message = json.dumps({"type": "connection_test", "timestamp": time.time()})
-            log_with_timestamp(f"正在测试UDP连接到 {REMOTE_IP}:{REMOTE_PORT}...")
+            # log_with_timestamp(f"正在测试UDP连接到 {REMOTE_IP}:{REMOTE_PORT}...")
             
             try:
                 self.remote_socket.settimeout(5)  # 5 second timeout for test
-                # self.remote_socket.sendto(test_message.encode('utf-8'), self.remote_address)
-                # log_with_timestamp("测试消息已发送到远程服务器")
-
                 # Try to receive response (optional for UDP)
                 try:
                     response, addr = self.remote_socket.recvfrom(1024)
                     log_with_timestamp(f"收到远程服务器响应: {response.decode('utf-8')[:100]}")
                 except socket.timeout:
-                    log_with_timestamp("远程服务器无响应（UDP协议正常现象）")
+                    # log_with_timestamp("远程服务器无响应（UDP协议正常现象）")
+                    pass
                 
                 self.remote_socket.settimeout(None)  # Remove timeout
                 log_with_timestamp(f'UDP连接到远程服务器 {REMOTE_IP}:{REMOTE_PORT} 已建立')
@@ -326,7 +364,6 @@ class OnlineDebugger:
 
     def start_local_server(self):
         """Start local UDP server to receive red aircraft situation data"""
-        log_with_timestamp("正在启动本地UDP服务器...")
         try:
             self.local_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.local_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -437,9 +474,15 @@ class OnlineDebugger:
                             log_with_timestamp('=' * 50)
                             log_with_timestamp('启动仿真')
                             log_with_timestamp('=' * 50)
+                            # 启动task_allocation.py脚本
                             if not self.start_flag:
                                 subprocess.Popen([sys.executable, 'task_allocation.py'])
                                 self.start_flag = True
+                        
+                        elif control_type == 2:
+                            log_with_timestamp('=' * 50)
+                            log_with_timestamp('暂停仿真')
+                            log_with_timestamp('=' * 50)
 
                         # 如果是试验结束指令
                         elif control_type == 4:
@@ -448,7 +491,8 @@ class OnlineDebugger:
                             log_with_timestamp('=' * 50)
                             # 重置启动标志，允许下次重新启动
                             self.start_flag = False
-                        
+
+                                                
                         # 回复管控消息结果
                         feedback_msg = UDPMessageParser.create_control_feedback_message(
                             control_type, control_feedback=1)  # 1=执行成功
@@ -466,26 +510,22 @@ class OnlineDebugger:
             try:
                 if isinstance(data, dict):
                     json_data = json.dumps(data, ensure_ascii=False)
-                    log_with_timestamp(f'正在通过UDP向远程服务器发送JSON数据: {json_data[:100]}{"..." if len(json_data) > 100 else ""}')
                     self.remote_socket.sendto(json_data.encode('utf-8'), self.remote_address)
                 else:
-                    log_with_timestamp(f'正在通过UDP向远程服务器发送数据')
                     self.remote_socket.sendto(data, self.remote_address)
-                log_with_timestamp('数据已成功通过UDP发送到远程服务器')
             except Exception as e:
                 log_with_timestamp(f'向远程服务器发送UDP数据失败: {e}')
         else:
             log_with_timestamp('无法发送数据: 未创建UDP套接字')
     
     def start_status_listener(self):
-        """启动态势数据监听线程"""
-        log_with_timestamp("正在启动态势数据监听器...")
+        """启动online_debug.py与task_allocation.py之间的态势数据监听线程"""
         try:
             # 创建UDP套接字接收态势数据
             self.status_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.status_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.status_socket.bind(('127.0.0.1', self.status_broadcast_port))
-            log_with_timestamp(f'态势数据监听器启动成功，监听端口 127.0.0.1:{self.status_broadcast_port}')
+            log_with_timestamp(f'online_debug.py与task_allocation.py脚本之间的态势数据监听器启动成功，监听端口 127.0.0.1:{self.status_broadcast_port}')
             
             while self.running:
                 try:
@@ -498,8 +538,9 @@ class OnlineDebugger:
                         # 解析JSON数据
                         status_data = json.loads(data.decode('utf-8'))
                         red_aircraft_list = status_data.get('red_aircraft', [])
+                        blue_targets_list = status_data.get('blue_targets', [])
                         
-                        log_with_timestamp(f'收到态势数据: {len(red_aircraft_list)} 架红方飞机')
+                        # log_with_timestamp(f'收到态势数据: {len(red_aircraft_list)} 架红方飞机, {len(blue_targets_list)} 个蓝方目标')
                         
                         # 为每架红方飞机构造并发送UDP消息
                         for aircraft in red_aircraft_list:
@@ -534,11 +575,24 @@ class OnlineDebugger:
                             )
                             if self.start_flag:
                                 self.send_to_remote(feedback_msg)
-                            # if flag == 1:
-                            #     # 发送到远端服务器
-                            #     self.send_to_remote(feedback_msg)
-                            #     log_with_timestamp(f'已发送红方平台状态: ID={aircraft.get("platform_id")} ({aircraft.get("drone_id")})')
                         
+                        # 为每个蓝方目标构造并发送UDP消息
+                        for target in blue_targets_list:
+                            # 构造目标状态消息
+                            target_msg = UDPMessageParser.create_target_status_message(
+                                target_id=target.get('target_id', 1),
+                                longitude=target.get('longitude', 116.0),
+                                latitude=target.get('latitude', 39.0),
+                                height=target.get('height', 1000),
+                                speed=target.get('speed', 200),
+                                course=target.get('course', 90),
+                                roll=target.get('roll', 0),
+                                pitch=target.get('pitch', 0),
+                                target_kind=target.get('target_kind', 1)
+                            )
+                            if self.start_flag:
+                                self.send_to_remote(target_msg)
+ 
                     except socket.timeout:
                         # 超时正常，继续循环
                         continue
@@ -560,22 +614,18 @@ class OnlineDebugger:
 
         # Create UDP socket for remote communication
         if self.connect_to_remote():
-            log_with_timestamp('远程通信UDP套接字就绪，正在启动本地UDP服务器...')
 
             # Start local UDP server thread
             server_thread = threading.Thread(target=self.start_local_server)
             server_thread.daemon = True
             server_thread.start()
-            log_with_timestamp('本地UDP服务器线程已启动')
             
             # Start status listener thread to receive red aircraft status from task_allocation.py
             status_thread = threading.Thread(target=self.start_status_listener)
             status_thread.daemon = True
             status_thread.start()
-            log_with_timestamp('态势数据监听线程已启动')
 
             # 在连接建立后立即发送节点注册消息
-            log_with_timestamp('正在向远程服务器发送节点注册消息...')
             registration_msg = UDPMessageParser.create_node_registration_message(
                 node_type=1,  # 北航实装节点
                 node_name="OnlineDebugNode",
@@ -586,7 +636,6 @@ class OnlineDebugger:
 
 
             try:
-                log_with_timestamp('UDP调试器正在运行，按Ctrl+C退出...')
                 log_with_timestamp('正在监控UDP数据包和数据流...')
                 
                 # Print status every 30 seconds

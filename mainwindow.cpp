@@ -937,8 +937,6 @@ void MainWindow::on_onlineDebugButton_clicked()
         pythonProcess = nullptr;
     } else {
         addLogMessage("Python调试脚本启动成功", "INFO");
-        addLogMessage("正在连接到远程服务器 180.1.80.238:1010", "INFO");
-        addLogMessage("本地监听端口 10113 接收红方态势信息", "INFO");
     }
 }
 

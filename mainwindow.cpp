@@ -2,6 +2,8 @@
 #include "ui_mainwindow.h"
 #include <QHeaderView>
 #include <QSplitter>
+#include <QMouseEvent>
+#include <QEvent>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -25,13 +27,10 @@ MainWindow::MainWindow(QWidget *parent)
     connectSignals();
 
     // 欢迎日志
-    addLogMessage("系统启动完成，红蓝态势显示平台就绪", "INFO");
+    addLogMessage("系统启动完成，动态场景生成平台就绪", "INFO");
     
-    // 设置倍速下拉框默认值为1x
+    // 设置倍速下拉框默认值为1x（会自动触发updateSimulationControlFile）
     ui->speedComboBox->setCurrentIndex(1);
-    
-    // 初始化控制文件
-    updateSimulationControlFile();
     
     addLogMessage(QString("控制文件路径：%1").arg(controlFilePath), "INFO");
 }
@@ -82,7 +81,7 @@ void MainWindow::initializeData()
 void MainWindow::initializeUI()
 {
     // 设置窗口标题和图标
-    setWindowTitle("红蓝态势显示平台");
+    setWindowTitle("动态场景生成平台");
 
     // 初始化状态栏
     statusLabel = new QLabel("系统就绪");
@@ -99,6 +98,10 @@ void MainWindow::initializeUI()
     timeUpdateTimer = new QTimer(this);
     connect(timeUpdateTimer, &QTimer::timeout, this, &MainWindow::updateStatusBar);
     timeUpdateTimer->start(1000); // 每秒更新一次
+
+    // 安装事件过滤器，用于处理点击空白处清除选择
+    ui->redTableView->viewport()->installEventFilter(this);
+    ui->blueTableView->viewport()->installEventFilter(this);
 
     // 初始状态更新
     updateRedStatistics();
@@ -198,6 +201,10 @@ void MainWindow::on_generateButton_clicked()
     blueAircraftModel->clearAircraft();
     blueAircraftModel->setAircraftList(result.blueAircraftList);
 
+    // 确定最终使用的策略和数量（优先使用用户选择的，否则使用算法推荐的）
+    QString finalStrategy = (!userStrategy.isEmpty()) ? userStrategy : result.recommendedStrategy;
+    int finalBlueCount = (userBlueCount > 0) ? userBlueCount : result.recommendedBlueCount;
+
     // 保存态势文件
     QJsonObject rootObj;
     
@@ -215,10 +222,10 @@ void MainWindow::on_generateButton_clicked()
     }
     rootObj["blue_aircraft"] = blueArray;
 
-    // 保存其他参数
+    // 保存其他参数（使用最终的参数）
     QJsonObject params;
-    params["blue_count"] = result.recommendedBlueCount;
-    params["strategy"] = result.recommendedStrategy;
+    params["blue_count"] = finalBlueCount;
+    params["strategy"] = finalStrategy;
     rootObj["parameters"] = params;
 
     QJsonDocument doc(rootObj);
@@ -235,13 +242,13 @@ void MainWindow::on_generateButton_clicked()
 
     addLogMessage(QString("成功生成%1架蓝方飞机，难度：%2，已保存到文件：%3")
                       .arg(result.blueAircraftList.size())
-                      .arg(result.recommendedStrategy)
+                      .arg(finalStrategy)
                       .arg(fileName), "SUCCESS");
 
     QMessageBox::information(this, "成功",
                              QString("已生成%1架蓝方飞机，难度：%2\n态势文件已保存到：%3")
                                  .arg(result.blueAircraftList.size())
-                                 .arg(result.recommendedStrategy)
+                                 .arg(finalStrategy)
                                  .arg(fileName));
 }
 
@@ -264,15 +271,30 @@ void MainWindow::on_actionLoadRed_triggered()
     QByteArray data = file.readAll();
     QJsonDocument doc = QJsonDocument::fromJson(data);
 
-    if (!doc.isArray()) {
-        QMessageBox::critical(this, "错误", "文件格式错误");
-        addLogMessage("文件格式错误：不是有效的JSON数组", "ERROR");
+    QJsonArray array;
+    QList<Aircraft> aircraftList;
+
+    // 支持两种格式：纯数组格式 或 包含red_aircraft的对象格式
+    if (doc.isArray()) {
+        // 格式1: 纯数组 [{...}, {...}]
+        array = doc.array();
+    } else if (doc.isObject()) {
+        // 格式2: 对象格式 {"red_aircraft": [...], "blue_aircraft": [...]}
+        QJsonObject obj = doc.object();
+        if (obj.contains("red_aircraft") && obj["red_aircraft"].isArray()) {
+            array = obj["red_aircraft"].toArray();
+        } else {
+            QMessageBox::critical(this, "错误", "找不到red_aircraft字段");
+            addLogMessage("加载失败：找不到red_aircraft字段", "ERROR");
+            return;
+        }
+    } else {
+        QMessageBox::critical(this, "错误", "JSON格式错误");
+        addLogMessage("加载失败：JSON格式错误", "ERROR");
         return;
     }
 
-    QJsonArray array = doc.array();
-    QList<Aircraft> aircraftList;
-
+    // 解析飞机数据
     for (const auto& value : array) {
         if (value.isObject()) {
             Aircraft aircraft = Aircraft::fromJson(value.toObject());
@@ -1180,4 +1202,31 @@ void MainWindow::on_killAllProcessesButton_clicked()
     } else {
         addLogMessage("没有找到需要杀死的进程", "INFO");
     }
+}
+
+// ================== 事件过滤器 ==================
+
+bool MainWindow::eventFilter(QObject *obj, QEvent *event)
+{
+    // 处理表格视图的鼠标点击事件
+    if (event->type() == QEvent::MouseButtonPress) {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+        
+        // 检查是否是红方或蓝方表格的viewport
+        if (obj == ui->redTableView->viewport() || obj == ui->blueTableView->viewport()) {
+            QTableView *tableView = (obj == ui->redTableView->viewport()) ? ui->redTableView : ui->blueTableView;
+            
+            // 获取点击位置对应的索引
+            QModelIndex index = tableView->indexAt(mouseEvent->pos());
+            
+            // 如果点击的是空白区域（无效索引），清除选择
+            if (!index.isValid()) {
+                tableView->clearSelection();
+                return true; // 事件已处理
+            }
+        }
+    }
+    
+    // 继续传递事件
+    return QMainWindow::eventFilter(obj, event);
 }

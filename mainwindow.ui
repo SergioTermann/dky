@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>红蓝态势显示平台</string>
+   <string>动态场景生成平台</string>
   </property>
   <property name="windowIcon">
    <iconset>

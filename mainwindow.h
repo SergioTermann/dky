@@ -21,7 +21,7 @@
 #include "situationgenerator.h"
 
 // 项目根目录常量定义
-const QString PROJECT_ROOT_DIR = "D:/dky/";
+const QString PROJECT_ROOT_DIR = "D:/DKY2/dky/dky/";
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -86,9 +86,6 @@ private:
 
     // 视图控制
     void setZoomFactor(double factor);
-    
-    // 事件过滤器
-    bool eventFilter(QObject *obj, QEvent *event) override;
 
     Ui::MainWindow *ui;
 

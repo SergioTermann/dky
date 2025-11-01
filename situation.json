@@ -1,65 +1,25 @@
 {
     "blue_aircraft": [
         {
-            "altitude": 6540,
-            "heading": 334,
+            "altitude": 8991,
+            "heading": 185,
             "id": 1,
-            "latitude": 465,
-            "longitude": 816,
-            "speed": 468,
+            "latitude": 175,
+            "longitude": 709,
+            "speed": 535,
             "status": "待命",
             "type": "蓝方飞机1"
-        },
-        {
-            "altitude": 6830,
-            "heading": 299,
-            "id": 2,
-            "latitude": 8,
-            "longitude": 315,
-            "speed": 426,
-            "status": "待命",
-            "type": "蓝方飞机2"
-        },
-        {
-            "altitude": 8428,
-            "heading": 146,
-            "id": 3,
-            "latitude": 551,
-            "longitude": 494,
-            "speed": 504,
-            "status": "待命",
-            "type": "蓝方飞机3"
         }
     ],
     "parameters": {
         "blue_count": 3,
-        "strategy": "简单"
+        "strategy": "中等"
     },
     "red_aircraft": [
         {
             "altitude": 5000,
             "heading": 0,
             "id": 1,
-            "latitude": 0,
-            "longitude": 0,
-            "speed": 500,
-            "status": "待命",
-            "type": "新飞机"
-        },
-        {
-            "altitude": 5000,
-            "heading": 0,
-            "id": 2,
-            "latitude": 0,
-            "longitude": 0,
-            "speed": 500,
-            "status": "待命",
-            "type": "新飞机"
-        },
-        {
-            "altitude": 5000,
-            "heading": 0,
-            "id": 3,
             "latitude": 0,
             "longitude": 0,
             "speed": 500,

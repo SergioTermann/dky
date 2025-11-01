@@ -28,6 +28,9 @@ MainWindow::MainWindow(QWidget *parent)
     addLogMessage("系统启动完成，红蓝态势显示平台就绪", "INFO");
     
     // 设置倍速下拉框默认值为1x
+    
+    // 设置蓝方任务模式下拉框默认值为攻击
+    ui->blueModeComboBox->setCurrentIndex(0);
     ui->speedComboBox->setCurrentIndex(1);
     
     // 初始化控制文件
@@ -800,6 +803,29 @@ void MainWindow::on_pauseResumeButton_clicked()
     
     // 更新控制文件
     updateSimulationControlFile();
+}
+
+void MainWindow::on_blueModeComboBox_currentIndexChanged(int index)
+{
+    QString modeText;
+    switch (index) {
+        case 0: // 攻击
+            modeText = "攻击";
+            break;
+        case 1: // 防御
+            modeText = "防御";
+            break;
+        case 2: // 对抗
+            modeText = "对抗";
+            break;
+        default:
+            modeText = "未知";
+    }
+    
+    // 记录模式变更
+    addLogMessage(QString("蓝方任务模式已切换为: %1").arg(modeText), "INFO");
+    
+    // 这里可以添加根据不同任务模式执行的操作
 }
 
 void MainWindow::on_speedComboBox_currentIndexChanged(int index)

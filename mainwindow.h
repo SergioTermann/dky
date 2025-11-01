@@ -48,6 +48,7 @@ private slots:
     void on_startSimulationButton_clicked();
     void on_pauseResumeButton_clicked();
     void on_speedComboBox_currentIndexChanged(int index);
+    void on_blueModeComboBox_currentIndexChanged(int index);
     void on_onlineDebugButton_clicked();
     void on_killAllProcessesButton_clicked();
 

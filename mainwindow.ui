@@ -770,6 +770,55 @@ QGroupBox::title {
   </widget>
  </item>
  <item>
+  <widget class="QLabel" name="blueModeLabel">
+   <property name="text">
+    <string>任务模式:</string>
+   </property>
+   <property name="styleSheet">
+    <string>font-weight: bold; color: #2C5282;</string>
+   </property>
+  </widget>
+ </item>
+ <item>
+  <widget class="QComboBox" name="blueModeComboBox">
+   <property name="minimumWidth">
+    <number>100</number>
+   </property>
+   <property name="styleSheet">
+    <string>
+     QComboBox {
+      border: 1px solid #3182CE;
+      border-radius: 4px;
+      padding: 2px 8px;
+      background-color: #EBF8FF;
+      color: #2C5282;
+     }
+     QComboBox::drop-down {
+      subcontrol-origin: padding;
+      subcontrol-position: top right;
+      width: 20px;
+      border-left: 1px solid #3182CE;
+     }
+    </string>
+   </property>
+   <item>
+    <property name="text">
+     <string>攻击</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>防御</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>对抗</string>
+    </property>
+   </item>
+  </widget>
+ </item>
+ <item>
   <spacer name="blueStatsSpacer">
    <property name="orientation">
     <enum>Qt::Horizontal</enum>

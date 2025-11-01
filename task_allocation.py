@@ -312,6 +312,145 @@ class GameBasedTaskAllocation:
             groups.append(group)
         return groups
 
+    def _calculate_threat_score_for_attack_mode(self, attack_drone: str) -> float:
+        """计算攻击模式下攻击无人机的威胁度（提高攻击能力权重）"""
+        attr = self.drone_attributes[attack_drone]
+        max_shapley = max(self.shapley_values.values()) if self.shapley_values else 1.0
+        shapley_weight = self.shapley_values[attack_drone] / max_shapley
+        mobility_weight = attr.mobility
+        power_weight = attr.power  # 在攻击模式下更重视动力
+        distance_weight = 1.0 / (1.0 + attr.distance_to_target / 30.0)
+        return shapley_weight * 0.3 + mobility_weight * 0.2 + power_weight * 0.3 + distance_weight * 0.2
+
+    def _calculate_threat_score_for_defense_mode(self, attack_drone: str) -> float:
+        """计算防御模式下攻击无人机的威胁度（提高防御能力权重）"""
+        attr = self.drone_attributes[attack_drone]
+        max_shapley = max(self.shapley_values.values()) if self.shapley_values else 1.0
+        shapley_weight = self.shapley_values[attack_drone] / max_shapley
+        mobility_weight = attr.mobility
+        power_weight = attr.power
+        # 在防御模式下，距离更重要（近距离威胁更大）
+        distance_weight = 1.0 / (1.0 + attr.distance_to_target / 20.0)  # 更敏感的距离因子
+        return shapley_weight * 0.3 + mobility_weight * 0.2 + power_weight * 0.2 + distance_weight * 0.3
+
+    def allocate_attack_drones_for_attack_mode(self, groups: List[TaskGroup]) -> List[TaskGroup]:
+        """攻击模式下分配攻击无人机 - 优先考虑攻击能力"""
+        remaining_attack_drones = self.M.copy()
+
+        while remaining_attack_drones:
+            # 按攻击模式下的威胁度排序
+            remaining_attack_drones.sort(key=lambda x: self._calculate_threat_score_for_attack_mode(x), reverse=True)
+            attack_drone = remaining_attack_drones.pop(0)
+            
+            # 选择最佳分组
+            best_group = self._select_best_group_for_attack_mode(attack_drone, groups)
+            best_group.attack_drones.append(attack_drone)
+            self._update_group_shapley_estimate(best_group)
+
+        return groups
+
+    def _select_best_group_for_attack_mode(self, attack_drone: str, groups: List[TaskGroup]) -> TaskGroup:
+        """攻击模式下选择最佳分组 - 优先考虑攻击能力"""
+        best_group = None
+        best_score = -float('inf')
+        attack_attr = self.drone_attributes[attack_drone]
+
+        for group in groups:
+            # 在攻击模式下，我们更关注攻击能力而不是负载平衡
+            current_load = len(group.attack_drones)
+            
+            # 负载因子（攻击模式下允许更多攻击无人机集中）
+            if current_load <= 2:
+                load_factor = 1.0
+            elif current_load <= 4:
+                load_factor = 0.8
+            else:
+                load_factor = 0.5
+                
+            # 攻击能力匹配
+            attack_capability = sum(self.drone_attributes[d].power for d in group.defense_drones) / 2.0
+            
+            # 距离匹配度（攻击模式下距离不那么重要）
+            if group.attack_drones:
+                group_distances = [self.drone_attributes[d].distance_to_target
+                                  for d in group.defense_drones + group.attack_drones]
+                group_avg_distance = np.mean(group_distances)
+            else:
+                group_avg_distance = np.mean([self.drone_attributes[d].distance_to_target
+                                             for d in group.defense_drones])
+                                             
+            distance_diff = abs(attack_attr.distance_to_target - group_avg_distance)
+            distance_match = 1.0 / (1.0 + distance_diff / 30.0)  # 攻击模式下距离容忍度更高
+            
+            # 综合评分（攻击模式下更重视攻击能力）
+            match_score = (load_factor * 0.4 + attack_capability * 0.4 + distance_match * 0.2)
+            
+            if match_score > best_score:
+                best_score = match_score
+                best_group = group
+                
+        return best_group
+
+    def allocate_attack_drones_for_defense_mode(self, groups: List[TaskGroup]) -> List[TaskGroup]:
+        """防御模式下分配攻击无人机 - 优先考虑防御能力"""
+        remaining_attack_drones = self.M.copy()
+
+        while remaining_attack_drones:
+            # 按防御模式下的威胁度排序
+            remaining_attack_drones.sort(key=lambda x: self._calculate_threat_score_for_defense_mode(x), reverse=True)
+            attack_drone = remaining_attack_drones.pop(0)
+            
+            # 选择最佳分组
+            best_group = self._select_best_group_for_defense_mode(attack_drone, groups)
+            best_group.attack_drones.append(attack_drone)
+            self._update_group_shapley_estimate(best_group)
+
+        return groups
+
+    def _select_best_group_for_defense_mode(self, attack_drone: str, groups: List[TaskGroup]) -> TaskGroup:
+        """防御模式下选择最佳分组 - 优先考虑防御能力"""
+        best_group = None
+        best_score = -float('inf')
+        attack_attr = self.drone_attributes[attack_drone]
+
+        for group in groups:
+            # 在防御模式下，我们更关注均衡分配和防御能力
+            current_load = len(group.attack_drones)
+            
+            # 负载因子（防御模式下更严格的负载平衡）
+            if current_load == 0:
+                load_factor = 1.0
+            elif current_load == 1:
+                load_factor = 0.6
+            elif current_load == 2:
+                load_factor = 0.3
+            else:
+                load_factor = 0.1
+                
+            # 防御能力匹配
+            defense_capability = sum(self.drone_attributes[d].mobility for d in group.defense_drones) / 2.0
+            
+            # 距离匹配度（防御模式下距离更重要）
+            if group.attack_drones:
+                group_distances = [self.drone_attributes[d].distance_to_target
+                                  for d in group.defense_drones + group.attack_drones]
+                group_avg_distance = np.mean(group_distances)
+            else:
+                group_avg_distance = np.mean([self.drone_attributes[d].distance_to_target
+                                             for d in group.defense_drones])
+                                             
+            distance_diff = abs(attack_attr.distance_to_target - group_avg_distance)
+            distance_match = 1.0 / (1.0 + distance_diff / 15.0)  # 防御模式下距离更敏感
+            
+            # 综合评分（防御模式下更重视负载平衡和距离）
+            match_score = (load_factor * 0.5 + defense_capability * 0.2 + distance_match * 0.3)
+            
+            if match_score > best_score:
+                best_score = match_score
+                best_group = group
+                
+        return best_group
+
     def _calculate_threat_score(self, attack_drone: str) -> float:
         """计算攻击无人机的威胁度"""
         attr = self.drone_attributes[attack_drone]
@@ -512,16 +651,33 @@ class GameBasedTaskAllocation:
 
         return output
 
-    def execute_task_allocation(self) -> Dict:
-        """执行完整的任务分配流程"""
+    def execute_task_allocation(self, task_mode="attack") -> Dict:
+        """执行完整的任务分配流程
+        
+        Args:
+            task_mode: 任务模式，可选值为 "attack"(攻击), "defense"(防御), "confrontation"(对抗)
+        """
+        print(f"执行任务分配，当前模式: {task_mode}")
+        
         # 计算Shapley值
         self.compute_all_shapley_values()
 
         # 初始化分组
         groups = self.initialize_task_groups()
-
-        # 分配攻击无人机
-        groups = self.allocate_attack_drones(groups)
+        
+        # 根据不同任务模式选择不同的分配策略
+        if task_mode == "attack":
+            # 攻击模式：优先考虑攻击能力，提高攻击无人机的权重
+            groups = self.allocate_attack_drones_for_attack_mode(groups)
+        elif task_mode == "defense":
+            # 防御模式：优先考虑防御能力，提高防御无人机的权重
+            groups = self.allocate_attack_drones_for_defense_mode(groups)
+        elif task_mode == "confrontation":
+            # 对抗模式：平衡攻防能力
+            groups = self.allocate_attack_drones(groups)  # 使用原有的平衡策略
+        else:
+            # 默认使用原有策略
+            groups = self.allocate_attack_drones(groups)
 
         # 保存分组结果
         self.task_groups = groups
@@ -635,14 +791,26 @@ def execute_task_allocation(json_file):
     # 从JSON文件加载数据
     attack_drones_data, defense_drones_data, initial_positions = load_situation_data(json_file)
     
+    # 检查是否存在控制文件并读取任务模式
+    task_mode = "attack"  # 默认为攻击模式
+    try:
+        with open('simulation_control.json', 'r', encoding='utf-8') as f:
+            control_data = json.load(f)
+            if 'blue_task_mode' in control_data:
+                task_mode = control_data['blue_task_mode']
+                print(f"当前蓝方任务模式: {task_mode}")
+    except Exception as e:
+        print(f"读取控制文件失败，使用默认任务模式: {e}")
+    
     # 创建任务分配系统
     allocator = GameBasedTaskAllocation(attack_drones_data, defense_drones_data)
     
-    # 执行任务分配
-    allocation_result = allocator.execute_task_allocation()
+    # 根据任务模式选择不同的策略
+    allocation_result = allocator.execute_task_allocation(task_mode)
     
     # 添加初始位置信息到结果中
     allocation_result['initial_positions'] = initial_positions
+    allocation_result['task_mode'] = task_mode  # 在结果中也记录任务模式
     
     return allocation_result
 

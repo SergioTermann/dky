@@ -857,6 +857,23 @@ void MainWindow::updateSimulationControlFile()
     controlObj["speed_multiplier"] = speedMultiplier;  // 修改键名以匹配Python脚本
     controlObj["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
     
+    // 添加蓝方任务模式标识
+    QString blueTaskMode;
+    switch (ui->blueModeComboBox->currentIndex()) {
+        case 0:
+            blueTaskMode = "attack";
+            break;
+        case 1:
+            blueTaskMode = "defense";
+            break;
+        case 2:
+            blueTaskMode = "confrontation";
+            break;
+        default:
+            blueTaskMode = "attack";  // 默认为攻击模式
+    }
+    controlObj["blue_task_mode"] = blueTaskMode;
+    
     QJsonDocument doc(controlObj);
     
     QFile file(controlFilePath);

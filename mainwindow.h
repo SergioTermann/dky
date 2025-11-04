@@ -87,7 +87,8 @@ private:
 
     // 视图控制
     void setZoomFactor(double factor);
-
+    // 事件过滤器
+    bool eventFilter(QObject *obj, QEvent *event) override;
     Ui::MainWindow *ui;
 
     // Data models

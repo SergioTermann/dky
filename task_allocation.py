@@ -982,8 +982,10 @@ class DroneSimulation:
     def update_positions(self, steps=100):
         """Simulate smooth movement of drones with realistic flight dynamics"""
         dt = 0.1  # 时间步长 (秒)
+        max_step_time = 0  # 记录最大单步运行时间
         
         for step in range(steps):
+            step_start_time = time.time()  # 记录单步开始时间
             # Calculate group centers
             group_centers = {}
             for group in self.allocation_result['task_groups']:
@@ -1142,8 +1144,19 @@ class DroneSimulation:
             # if step % 10 == 0:
             self._broadcast_status()
 
+            # 计算单步运行时间（不包括sleep延迟）
+            step_end_time = time.time()
+            step_elapsed = step_end_time - step_start_time
+            if step_elapsed > max_step_time:
+                max_step_time = step_elapsed
+
             # 每步之间增加间隔时间，让仿真更真实
             time.sleep(0.1)  # 每步间隔0.1秒，让Tacview能更好地显示动画
+        
+        # 输出最大单步运行时间
+        print(f"\n单步仿真运行时间统计:")
+        print(f"  最大单步时间: {max_step_time*1000:.2f} 毫秒 ({max_step_time:.4f} 秒)")
+        print(f"  平均总时间: {(max_step_time + 0.1)*1000:.2f} 毫秒 (计算 + sleep延迟)")
 
     def calculate_performance_metrics(self):
         """Calculate performance metrics for the allocation"""

@@ -1136,9 +1136,9 @@ class DroneSimulation:
                             # 忽略Tacview发送错误，继续仿真
                             pass
 
-            # 每50步输出一次进度
-            if step % 50 == 0:
-                print(f"仿真进度: {step}/{steps} 步 ({step/steps*100:.1f}%)")
+            # 每50步输出一次进度（已禁用，避免日志过多）
+            # if step % 50 == 0:
+            #     print(f"仿真进度: {step}/{steps} 步 ({step/steps*100:.1f}%)")
             
             # 广播红方态势数据（每10步广播一次，减少数据量）
             # if step % 10 == 0:
@@ -1156,7 +1156,6 @@ class DroneSimulation:
         # 输出最大单步运行时间
         print(f"\n单步仿真运行时间统计:")
         print(f"  最大单步时间: {max_step_time*1000:.2f} 毫秒 ({max_step_time:.4f} 秒)")
-        print(f"  平均总时间: {(max_step_time + 0.1)*1000:.2f} 毫秒 (计算 + sleep延迟)")
 
     def calculate_performance_metrics(self):
         """Calculate performance metrics for the allocation"""

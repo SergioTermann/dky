@@ -8,41 +8,121 @@
       "attack_drones": [
         "A1"
       ],
-      "shapley_estimate": 0.09999999999999998,
+      "shapley_estimate": -0.05634253071577058,
       "group_size": 2,
       "attack_load": 1,
-      "avg_mobility": 0.5175000000000001,
-      "avg_power": 0.69955,
-      "avg_distance": 9552.084510562105
+      "avg_mobility": 0.45399999999999996,
+      "avg_power": 0.70215,
+      "avg_distance": 8549.311154360483
+    },
+    {
+      "group_id": 2,
+      "defense_drones": [
+        "D2"
+      ],
+      "attack_drones": [
+        "A3"
+      ],
+      "shapley_estimate": 0.12616346468239806,
+      "group_size": 2,
+      "attack_load": 1,
+      "avg_mobility": 0.5305,
+      "avg_power": 0.5016499999999999,
+      "avg_distance": 8090.3456990883715
+    },
+    {
+      "group_id": 3,
+      "defense_drones": [
+        "D3"
+      ],
+      "attack_drones": [
+        "A2"
+      ],
+      "shapley_estimate": 0.03017906603337249,
+      "group_size": 2,
+      "attack_load": 1,
+      "avg_mobility": 0.4265,
+      "avg_power": 0.6969000000000001,
+      "avg_distance": 9497.373642423252
     }
   ],
   "shapley_values": {
-    "A1": -0.01662301258574833,
-    "D1": 0.11662301258574831
+    "A1": -0.036574754053975804,
+    "A2": 0.03901196337357555,
+    "A3": 0.06026691337357555,
+    "D1": -0.019767776661794773,
+    "D2": 0.0658965513088225,
+    "D3": -0.00883289734020306
   },
   "drone_attributes": {
     "A1": {
       "mobility": 0.5,
       "power": 0.5,
+      "distance_to_target": 7445.9539852190865
+    },
+    "A2": {
+      "mobility": 0.3,
+      "power": 0.5,
+      "distance_to_target": 8098.743174098065
+    },
+    "A3": {
+      "mobility": 0.5,
+      "power": 0.5,
       "distance_to_target": 8098.743174098065
     },
     "D1": {
-      "mobility": 0.535,
-      "power": 0.8991,
-      "distance_to_target": 11005.425847026143
+      "mobility": 0.4079999999999999,
+      "power": 0.9043,
+      "distance_to_target": 9652.668323501877
+    },
+    "D2": {
+      "mobility": 0.561,
+      "power": 0.5033,
+      "distance_to_target": 8081.948224078678
+    },
+    "D3": {
+      "mobility": 0.553,
+      "power": 0.8938,
+      "distance_to_target": 10896.004110748441
     }
   },
   "allocation_metadata": {
-    "total_drones": 2,
-    "attack_drones_count": 1,
-    "defense_drones_count": 1,
-    "final_groups_count": 1
+    "total_drones": 6,
+    "attack_drones_count": 3,
+    "defense_drones_count": 3,
+    "final_groups_count": 3
   },
   "initial_positions": {
     "A1": {
       "position": [
+        3546.547113471518,
+        4226.610263784307,
+        5000
+      ],
+      "velocity": [
+        0.0,
+        500.0,
+        0
+      ],
+      "type": "attack"
+    },
+    "A2": {
+      "position": [
         6371.0,
         0.0,
+        5000
+      ],
+      "velocity": [
+        0.0,
+        300.0,
+        0
+      ],
+      "type": "attack"
+    },
+    "A3": {
+      "position": [
+        3185.500000000001,
+        5517.447847510658,
         5000
       ],
       "velocity": [
@@ -54,13 +134,39 @@
     },
     "D1": {
       "position": [
-        -6230.148630107148,
-        1211.0182166941672,
-        8991
+        873.8030241411589,
+        -3261.0772819021468,
+        9043
       ],
       "velocity": [
-        -46.628322369997,
-        -532.9641634790838,
+        -372.7265467181812,
+        165.9485503749263,
+        0
+      ],
+      "type": "defense"
+    },
+    "D2": {
+      "position": [
+        989.2151437008675,
+        -6245.6586118808455,
+        5033
+      ],
+      "velocity": [
+        78.0761096385967,
+        555.540386564021,
+        0
+      ],
+      "type": "defense"
+    },
+    "D3": {
+      "position": [
+        5450.436167919891,
+        3021.2261022435387,
+        8938
+      ],
+      "velocity": [
+        546.1916523491112,
+        -86.50825916724764,
         0
       ],
       "type": "defense"

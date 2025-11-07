@@ -49,6 +49,7 @@ private slots:
     void on_pauseResumeButton_clicked();
     void on_speedComboBox_currentIndexChanged(int index);
     void on_blueModeComboBox_currentIndexChanged(int index);
+    void on_redModeComboBox_currentIndexChanged(int index);
     void on_onlineDebugButton_clicked();
     void on_killAllProcessesButton_clicked();
 
@@ -116,7 +117,7 @@ private:
     QProcess *pythonProcess;
     
     // 辅助函数
-    void updateSimulationControlFile();
+    void updateSimulationControlFile(bool showLog = true);
     void enableSimulationControls(bool enable);
     void createPythonDebugScript(const QString &scriptPath);
 };

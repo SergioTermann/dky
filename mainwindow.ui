@@ -92,7 +92,7 @@ QGroupBox::title {
 }</string>
           </property>
           <layout class="QHBoxLayout" name="redStatsLayout">
- 	   <item>
+	   <item>
             <widget class="QLabel" name="redCountLabel">
              <property name="text">
               <string>📊 总数: 0架</string>
@@ -110,6 +110,55 @@ QGroupBox::title {
              <property name="styleSheet">
               <string>font-weight: bold; color: #C53030;</string>
              </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="redModeLabel">
+             <property name="text">
+              <string>任务模式:</string>
+             </property>
+             <property name="styleSheet">
+              <string>font-weight: bold; color: #C53030;</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="redModeComboBox">
+             <property name="minimumWidth">
+              <number>100</number>
+             </property>
+             <property name="styleSheet">
+              <string>
+               QComboBox {
+                border: 1px solid #E53E3E;
+                border-radius: 4px;
+                padding: 2px 8px;
+                background-color: #FFF5F5;
+                color: #C53030;
+               }
+               QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left: 1px solid #E53E3E;
+               }
+              </string>
+             </property>
+             <item>
+              <property name="text">
+               <string>攻击</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>防御</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>对抗</string>
+              </property>
+             </item>
             </widget>
            </item>
           <item>

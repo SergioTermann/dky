@@ -29,11 +29,22 @@ MainWindow::MainWindow(QWidget *parent)
     // 欢迎日志
     addLogMessage("系统启动完成，动态场景生成平台就绪", "INFO");
     
-    // 设置倍速下拉框默认值为1x
+    // 设置红蓝双方任务模式下拉框默认值为攻击（阻断信号避免初始化时输出日志）
+    ui->redModeComboBox->blockSignals(true);
+    ui->redModeComboBox->setCurrentIndex(0);
+    ui->redModeComboBox->blockSignals(false);
     
-    // 设置蓝方任务模式下拉框默认值为攻击
+    ui->blueModeComboBox->blockSignals(true);
     ui->blueModeComboBox->setCurrentIndex(0);
-    ui->speedComboBox->setCurrentIndex(1);  // 设置索引时会自动触发信号并更新控制文件
+    ui->blueModeComboBox->blockSignals(false);
+    
+    // 设置倍速下拉框默认值为1x（阻断信号避免初始化时输出日志）
+    ui->speedComboBox->blockSignals(true);
+    ui->speedComboBox->setCurrentIndex(1);
+    ui->speedComboBox->blockSignals(false);
+    
+    // 初始化控制文件（不输出日志）
+    updateSimulationControlFile(false);
     
     addLogMessage(QString("控制文件路径：%1").arg(controlFilePath), "INFO");
 }
@@ -283,6 +294,34 @@ void MainWindow::on_actionLoadRed_triggered()
         QJsonObject obj = doc.object();
         if (obj.contains("red_aircraft") && obj["red_aircraft"].isArray()) {
             array = obj["red_aircraft"].toArray();
+            
+            // 加载任务模式（如果存在）
+            if (obj.contains("parameters") && obj["parameters"].isObject()) {
+                QJsonObject params = obj["parameters"].toObject();
+                if (params.contains("task_mode")) {
+                    QString taskMode = params["task_mode"].toString();
+                    int modeIndex = 0; // 默认为攻击模式
+                    
+                    if (taskMode == "attack") {
+                        modeIndex = 0;
+                    } else if (taskMode == "defense") {
+                        modeIndex = 1;
+                    } else if (taskMode == "confrontation") {
+                        modeIndex = 2;
+                    }
+                    
+                    // 设置任务模式（阻断信号避免触发不必要的日志）
+                    ui->redModeComboBox->blockSignals(true);
+                    ui->blueModeComboBox->blockSignals(true);
+                    ui->redModeComboBox->setCurrentIndex(modeIndex);
+                    ui->blueModeComboBox->setCurrentIndex(modeIndex);
+                    ui->redModeComboBox->blockSignals(false);
+                    ui->blueModeComboBox->blockSignals(false);
+                    
+                    // 更新控制文件（静默更新，不输出日志）
+                    updateSimulationControlFile(false);
+                }
+            }
         } else {
             QMessageBox::critical(this, "错误", "找不到red_aircraft字段");
             addLogMessage("加载失败：找不到red_aircraft字段", "ERROR");
@@ -353,6 +392,24 @@ void MainWindow::on_actionSave_triggered()
     QJsonObject params;
     params["blue_count"] = ui->blueAircraftCountSpinBox->value();
     params["strategy"] = ui->strategyComboBox->currentText();
+    
+    // 保存任务模式
+    QString taskMode;
+    switch (ui->redModeComboBox->currentIndex()) {
+        case 0:
+            taskMode = "attack";
+            break;
+        case 1:
+            taskMode = "defense";
+            break;
+        case 2:
+            taskMode = "confrontation";
+            break;
+        default:
+            taskMode = "attack";
+    }
+    params["task_mode"] = taskMode;
+    
     rootObj["parameters"] = params;
 
     QJsonDocument doc(rootObj);
@@ -367,9 +424,10 @@ void MainWindow::on_actionSave_triggered()
     file.write(doc.toJson());
     file.close();
 
-    addLogMessage(QString("数据保存成功：红方%1架，蓝方%2架").arg(redList.size()).arg(blueList.size()), "SUCCESS");
+    QString modeText = ui->redModeComboBox->currentText();
+    addLogMessage(QString("数据保存成功：红方%1架，蓝方%2架，任务模式：%3").arg(redList.size()).arg(blueList.size()).arg(modeText), "SUCCESS");
     QMessageBox::information(this, "成功",
-                             QString("已保存%1架红方飞机，%2架蓝方飞机").arg(redList.size()).arg(blueList.size()));
+                             QString("已保存%1架红方飞机，%2架蓝方飞机\n任务模式：%3").arg(redList.size()).arg(blueList.size()).arg(modeText));
 }
 
 void MainWindow::on_clearRedButton_clicked()
@@ -510,7 +568,7 @@ void MainWindow::on_actionResetZoom_triggered()
 void MainWindow::on_actionAbout_triggered()
 {
     QMessageBox::about(this, "关于",
-                       "红蓝态势显示平台 v1.0\n\n"
+                       "动态场景生成平台 v1.0\n\n"
                        "功能特性：\n"
                        "• 红方态势管理\n"
                        "• 智能蓝方生成\n"
@@ -819,8 +877,8 @@ void MainWindow::on_pauseResumeButton_clicked()
         addLogMessage("推演已继续", "INFO");
     }
     
-    // 更新控制文件
-    updateSimulationControlFile();
+    // 更新控制文件（不显示重复日志）
+    updateSimulationControlFile(false);
 }
 
 void MainWindow::on_blueModeComboBox_currentIndexChanged(int index)
@@ -840,10 +898,45 @@ void MainWindow::on_blueModeComboBox_currentIndexChanged(int index)
             modeText = "未知";
     }
     
-    // 记录模式变更
-    addLogMessage(QString("蓝方任务模式已切换为: %1").arg(modeText), "INFO");
+    // 同步更新红方任务模式（阻断信号避免循环触发）
+    ui->redModeComboBox->blockSignals(true);
+    ui->redModeComboBox->setCurrentIndex(index);
+    ui->redModeComboBox->blockSignals(false);
     
-    // 这里可以添加根据不同任务模式执行的操作
+    // 记录模式变更
+    addLogMessage(QString("任务模式已切换为: %1 ").arg(modeText), "INFO");
+    
+    // 更新控制文件（不显示重复日志）
+    updateSimulationControlFile(false);
+}
+
+void MainWindow::on_redModeComboBox_currentIndexChanged(int index)
+{
+    QString modeText;
+    switch (index) {
+        case 0: // 攻击
+            modeText = "攻击";
+            break;
+        case 1: // 防御
+            modeText = "防御";
+            break;
+        case 2: // 对抗
+            modeText = "对抗";
+            break;
+        default:
+            modeText = "未知";
+    }
+    
+    // 同步更新蓝方任务模式（阻断信号避免循环触发）
+    ui->blueModeComboBox->blockSignals(true);
+    ui->blueModeComboBox->setCurrentIndex(index);
+    ui->blueModeComboBox->blockSignals(false);
+    
+    // 记录模式变更
+    addLogMessage(QString("任务模式已切换为: %1").arg(modeText), "INFO");
+    
+    // 更新控制文件（不显示重复日志）
+    updateSimulationControlFile(false);
 }
 
 void MainWindow::on_speedComboBox_currentIndexChanged(int index)
@@ -864,11 +957,11 @@ void MainWindow::on_speedComboBox_currentIndexChanged(int index)
     
     addLogMessage(QString("推演倍速已设置为 %1x").arg(speedMultiplier), "INFO");
     
-    // 更新控制文件
-    updateSimulationControlFile();
+    // 更新控制文件（不显示重复日志）
+    updateSimulationControlFile(false);
 }
 
-void MainWindow::updateSimulationControlFile()
+void MainWindow::updateSimulationControlFile(bool showLog)
 {
     QJsonObject controlObj;
     controlObj["paused"] = isPaused;
@@ -899,9 +992,11 @@ void MainWindow::updateSimulationControlFile()
         file.write(doc.toJson());
         file.close();
         
-        // 添加日志信息
-        QString status = isPaused ? "暂停" : "运行";
-        addLogMessage(QString("更新仿真控制: %1, 速度: %2x").arg(status).arg(speedMultiplier), "INFO");
+        // 根据参数决定是否添加日志信息
+        if (showLog) {
+            QString status = isPaused ? "暂停" : "运行";
+            addLogMessage(QString("更新仿真控制: %1, 速度: %2x").arg(status).arg(speedMultiplier), "INFO");
+        }
     } else {
         addLogMessage("无法写入仿真控制文件", "ERROR");
     }
@@ -937,8 +1032,8 @@ void MainWindow::enableSimulationControls(bool enable)
             "    color: #718096;"
             "}"
         );
-        // 重置状态后更新控制文件
-        updateSimulationControlFile();
+        // 重置状态后更新控制文件（不显示日志）
+        updateSimulationControlFile(false);
     }
 }
 

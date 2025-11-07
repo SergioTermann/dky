@@ -174,7 +174,7 @@ void MainWindow::on_generateButton_clicked()
     QString fileName = QFileDialog::getSaveFileName(this,
                                                     "保存态势文件",
                                                     QDir::currentPath() + "/situation.json",
-                                                    "JSON Files (*.json)");
+                                                    "JSON Files (*.json);;XML Files (*.xml)");
 
     if (fileName.isEmpty()) {
         addLogMessage("用户取消了文件保存操作", "INFO");
@@ -216,40 +216,51 @@ void MainWindow::on_generateButton_clicked()
     // 确定最终使用的策略和数量（优先使用用户选择的，否则使用算法推荐的）
     QString finalStrategy = (!userStrategy.isEmpty()) ? userStrategy : result.recommendedStrategy;
     int finalBlueCount = (userBlueCount > 0) ? userBlueCount : result.recommendedBlueCount;
-    // 保存态势文件
-    QJsonObject rootObj;
     
-    // 红方数据
-    QJsonArray redArray;
-    for (const auto& aircraft : redAircraftList) {
-        redArray.append(aircraft.toJson());
-    }
-    rootObj["red_aircraft"] = redArray;
-
-    // 蓝方数据
-    QJsonArray blueArray;
-    for (const auto& aircraft : result.blueAircraftList) {
-        blueArray.append(aircraft.toJson());
-    }
-    rootObj["blue_aircraft"] = blueArray;
-
     // 保存其他参数
     QJsonObject params;
     params["blue_count"] = finalBlueCount;
     params["strategy"] = finalStrategy;
-    rootObj["parameters"] = params;
+    
+    // 根据文件扩展名选择保存格式
+    bool saveSuccess = false;
+    if (fileName.endsWith(".xml", Qt::CaseInsensitive)) {
+        // 保存为XML格式
+        saveSuccess = saveToXml(fileName, redAircraftList, result.blueAircraftList, params);
+    } else {
+        // 保存为JSON格式（默认）
+        QJsonObject rootObj;
+        
+        // 红方数据
+        QJsonArray redArray;
+        for (const auto& aircraft : redAircraftList) {
+            redArray.append(aircraft.toJson());
+        }
+        rootObj["red_aircraft"] = redArray;
 
-    QJsonDocument doc(rootObj);
+        // 蓝方数据
+        QJsonArray blueArray;
+        for (const auto& aircraft : result.blueAircraftList) {
+            blueArray.append(aircraft.toJson());
+        }
+        rootObj["blue_aircraft"] = blueArray;
+        rootObj["parameters"] = params;
 
-    QFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly)) {
+        QJsonDocument doc(rootObj);
+
+        QFile file(fileName);
+        if (file.open(QIODevice::WriteOnly)) {
+            file.write(doc.toJson());
+            file.close();
+            saveSuccess = true;
+        }
+    }
+    
+    if (!saveSuccess) {
         QMessageBox::critical(this, "错误", "无法创建文件");
         addLogMessage(QString("态势文件保存失败：%1").arg(fileName), "ERROR");
         return;
     }
-
-    file.write(doc.toJson());
-    file.close();
 
     addLogMessage(QString("成功生成%1架蓝方飞机，难度：%2，已保存到文件：%3")
                       .arg(result.blueAircraftList.size())
@@ -268,76 +279,94 @@ void MainWindow::on_actionLoadRed_triggered()
     QString fileName = QFileDialog::getOpenFileName(this,
                                                     "加载红方态势",
                                                     QDir::currentPath() + "/test_red_data.json",
-                                                    "JSON Files (*.json)");
+                                                    "All Supported Files (*.json *.xml);;JSON Files (*.json);;XML Files (*.xml)");
 
     if (fileName.isEmpty()) return;
 
-    QFile file(fileName);
-    if (!file.open(QIODevice::ReadOnly)) {
-        QMessageBox::critical(this, "错误", "无法打开文件");
-        addLogMessage(QString("文件加载失败：%1").arg(fileName), "ERROR");
-        return;
-    }
-
-    QByteArray data = file.readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-
-    QJsonArray array;
     QList<Aircraft> aircraftList;
-
-    // 支持两种格式：纯数组格式 或 包含red_aircraft的对象格式
-    if (doc.isArray()) {
-        // 格式1: 纯数组 [{...}, {...}]
-        array = doc.array();
-    } else if (doc.isObject()) {
-        // 格式2: 对象格式 {"red_aircraft": [...], "blue_aircraft": [...]}
-        QJsonObject obj = doc.object();
-        if (obj.contains("red_aircraft") && obj["red_aircraft"].isArray()) {
-            array = obj["red_aircraft"].toArray();
-            
-            // 加载任务模式（如果存在）
-            if (obj.contains("parameters") && obj["parameters"].isObject()) {
-                QJsonObject params = obj["parameters"].toObject();
-                if (params.contains("task_mode")) {
-                    QString taskMode = params["task_mode"].toString();
-                    int modeIndex = 0; // 默认为攻击模式
-                    
-                    if (taskMode == "attack") {
-                        modeIndex = 0;
-                    } else if (taskMode == "defense") {
-                        modeIndex = 1;
-                    } else if (taskMode == "confrontation") {
-                        modeIndex = 2;
-                    }
-                    
-                    // 设置任务模式（阻断信号避免触发不必要的日志）
-                    ui->redModeComboBox->blockSignals(true);
-                    ui->blueModeComboBox->blockSignals(true);
-                    ui->redModeComboBox->setCurrentIndex(modeIndex);
-                    ui->blueModeComboBox->setCurrentIndex(modeIndex);
-                    ui->redModeComboBox->blockSignals(false);
-                    ui->blueModeComboBox->blockSignals(false);
-                    
-                    // 更新控制文件（静默更新，不输出日志）
-                    updateSimulationControlFile(false);
-                }
-            }
-        } else {
-            QMessageBox::critical(this, "错误", "找不到red_aircraft字段");
-            addLogMessage("加载失败：找不到red_aircraft字段", "ERROR");
+    QJsonObject params;
+    bool loadSuccess = false;
+    
+    // 根据文件扩展名选择加载格式
+    if (fileName.endsWith(".xml", Qt::CaseInsensitive)) {
+        // 从XML文件加载
+        loadSuccess = loadFromXml(fileName, aircraftList, params);
+        if (!loadSuccess) {
+            QMessageBox::critical(this, "错误", "无法解析XML文件");
+            addLogMessage(QString("XML文件解析失败：%1").arg(fileName), "ERROR");
             return;
         }
     } else {
-        QMessageBox::critical(this, "错误", "JSON格式错误");
-        addLogMessage("加载失败：JSON格式错误", "ERROR");
-        return;
-    }
-
-    for (const auto& value : array) {
-        if (value.isObject()) {
-            Aircraft aircraft = Aircraft::fromJson(value.toObject());
-            aircraftList.append(aircraft);
+        // 从JSON文件加载
+        QFile file(fileName);
+        if (!file.open(QIODevice::ReadOnly)) {
+            QMessageBox::critical(this, "错误", "无法打开文件");
+            addLogMessage(QString("文件加载失败：%1").arg(fileName), "ERROR");
+            return;
         }
+
+        QByteArray data = file.readAll();
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+
+        QJsonArray array;
+
+        // 支持两种格式：纯数组格式 或 包含red_aircraft的对象格式
+        if (doc.isArray()) {
+            // 格式1: 纯数组 [{...}, {...}]
+            array = doc.array();
+        } else if (doc.isObject()) {
+            // 格式2: 对象格式 {"red_aircraft": [...], "blue_aircraft": [...]}
+            QJsonObject obj = doc.object();
+            if (obj.contains("red_aircraft") && obj["red_aircraft"].isArray()) {
+                array = obj["red_aircraft"].toArray();
+                
+                // 加载参数
+                if (obj.contains("parameters") && obj["parameters"].isObject()) {
+                    params = obj["parameters"].toObject();
+                }
+            } else {
+                QMessageBox::critical(this, "错误", "找不到red_aircraft字段");
+                addLogMessage("加载失败：找不到red_aircraft字段", "ERROR");
+                return;
+            }
+        } else {
+            QMessageBox::critical(this, "错误", "JSON格式错误");
+            addLogMessage("加载失败：JSON格式错误", "ERROR");
+            return;
+        }
+
+        for (const auto& value : array) {
+            if (value.isObject()) {
+                Aircraft aircraft = Aircraft::fromJson(value.toObject());
+                aircraftList.append(aircraft);
+            }
+        }
+        loadSuccess = true;
+    }
+    
+    // 加载任务模式（如果存在）
+    if (params.contains("task_mode")) {
+        QString taskMode = params["task_mode"].toString();
+        int modeIndex = 0; // 默认为攻击模式
+        
+        if (taskMode == "attack") {
+            modeIndex = 0;
+        } else if (taskMode == "defense") {
+            modeIndex = 1;
+        } else if (taskMode == "confrontation") {
+            modeIndex = 2;
+        }
+        
+        // 设置任务模式（阻断信号避免触发不必要的日志）
+        ui->redModeComboBox->blockSignals(true);
+        ui->blueModeComboBox->blockSignals(true);
+        ui->redModeComboBox->setCurrentIndex(modeIndex);
+        ui->blueModeComboBox->setCurrentIndex(modeIndex);
+        ui->redModeComboBox->blockSignals(false);
+        ui->blueModeComboBox->blockSignals(false);
+        
+        // 更新控制文件（静默更新，不输出日志）
+        updateSimulationControlFile(false);
     }
 
     redAircraftModel->setAircraftList(aircraftList);
@@ -367,26 +396,9 @@ void MainWindow::on_actionSave_triggered()
     QString fileName = QFileDialog::getSaveFileName(this,
                                                     "保存态势数据",
                                                     QDir::currentPath() + "/test_red_blue_data.json",
-                                                    "JSON Files (*.json)");
+                                                    "JSON Files (*.json);;XML Files (*.xml)");
 
     if (fileName.isEmpty()) return;
-
-    // 创建包含红方和蓝方数据的JSON对象
-    QJsonObject rootObj;
-
-    // 红方数据
-    QJsonArray redArray;
-    for (const auto& aircraft : redList) {
-        redArray.append(aircraft.toJson());
-    }
-    rootObj["red_aircraft"] = redArray;
-
-    // 蓝方数据
-    QJsonArray blueArray;
-    for (const auto& aircraft : blueList) {
-        blueArray.append(aircraft.toJson());
-    }
-    rootObj["blue_aircraft"] = blueArray;
 
     // 保存其他参数
     QJsonObject params;
@@ -410,19 +422,45 @@ void MainWindow::on_actionSave_triggered()
     }
     params["task_mode"] = taskMode;
     
-    rootObj["parameters"] = params;
+    // 根据文件扩展名选择保存格式
+    bool saveSuccess = false;
+    if (fileName.endsWith(".xml", Qt::CaseInsensitive)) {
+        // 保存为XML格式
+        saveSuccess = saveToXml(fileName, redList, blueList, params);
+    } else {
+        // 保存为JSON格式（默认）
+        QJsonObject rootObj;
 
-    QJsonDocument doc(rootObj);
+        // 红方数据
+        QJsonArray redArray;
+        for (const auto& aircraft : redList) {
+            redArray.append(aircraft.toJson());
+        }
+        rootObj["red_aircraft"] = redArray;
 
-    QFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly)) {
+        // 蓝方数据
+        QJsonArray blueArray;
+        for (const auto& aircraft : blueList) {
+            blueArray.append(aircraft.toJson());
+        }
+        rootObj["blue_aircraft"] = blueArray;
+        rootObj["parameters"] = params;
+
+        QJsonDocument doc(rootObj);
+
+        QFile file(fileName);
+        if (file.open(QIODevice::WriteOnly)) {
+            file.write(doc.toJson());
+            file.close();
+            saveSuccess = true;
+        }
+    }
+    
+    if (!saveSuccess) {
         QMessageBox::critical(this, "错误", "无法创建文件");
         addLogMessage(QString("文件保存失败：%1").arg(fileName), "ERROR");
         return;
     }
-
-    file.write(doc.toJson());
-    file.close();
 
     QString modeText = ui->redModeComboBox->currentText();
     addLogMessage(QString("数据保存成功：红方%1架，蓝方%2架，任务模式：%3").arg(redList.size()).arg(blueList.size()).arg(modeText), "SUCCESS");
@@ -1362,4 +1400,135 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     
     // 继续传递事件
     return QMainWindow::eventFilter(obj, event);
+}
+
+// ================== XML文件处理函数 ==================
+
+bool MainWindow::saveToXml(const QString &fileName, const QList<Aircraft> &redList, 
+                           const QList<Aircraft> &blueList, const QJsonObject &params)
+{
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+
+    QXmlStreamWriter writer(&file);
+    writer.setAutoFormatting(true);
+    writer.writeStartDocument();
+    
+    writer.writeStartElement("situation");
+    
+    // 写入红方飞机
+    writer.writeStartElement("red_aircraft");
+    for (const auto& aircraft : redList) {
+        writer.writeStartElement("aircraft");
+        writer.writeTextElement("id", QString::number(aircraft.id));
+        writer.writeTextElement("type", aircraft.type);
+        writer.writeTextElement("longitude", QString::number(aircraft.longitude));
+        writer.writeTextElement("latitude", QString::number(aircraft.latitude));
+        writer.writeTextElement("altitude", QString::number(aircraft.altitude));
+        writer.writeTextElement("speed", QString::number(aircraft.speed));
+        writer.writeTextElement("heading", QString::number(aircraft.heading));
+        writer.writeTextElement("status", aircraft.status);
+        writer.writeEndElement(); // aircraft
+    }
+    writer.writeEndElement(); // red_aircraft
+    
+    // 写入蓝方飞机
+    writer.writeStartElement("blue_aircraft");
+    for (const auto& aircraft : blueList) {
+        writer.writeStartElement("aircraft");
+        writer.writeTextElement("id", QString::number(aircraft.id));
+        writer.writeTextElement("type", aircraft.type);
+        writer.writeTextElement("longitude", QString::number(aircraft.longitude));
+        writer.writeTextElement("latitude", QString::number(aircraft.latitude));
+        writer.writeTextElement("altitude", QString::number(aircraft.altitude));
+        writer.writeTextElement("speed", QString::number(aircraft.speed));
+        writer.writeTextElement("heading", QString::number(aircraft.heading));
+        writer.writeTextElement("status", aircraft.status);
+        writer.writeEndElement(); // aircraft
+    }
+    writer.writeEndElement(); // blue_aircraft
+    
+    // 写入参数
+    writer.writeStartElement("parameters");
+    writer.writeTextElement("blue_count", QString::number(params["blue_count"].toInt()));
+    writer.writeTextElement("strategy", params["strategy"].toString());
+    if (params.contains("task_mode")) {
+        writer.writeTextElement("task_mode", params["task_mode"].toString());
+    }
+    writer.writeEndElement(); // parameters
+    
+    writer.writeEndElement(); // situation
+    writer.writeEndDocument();
+    
+    file.close();
+    return true;
+}
+
+bool MainWindow::loadFromXml(const QString &fileName, QList<Aircraft> &aircraftList, QJsonObject &params)
+{
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    QXmlStreamReader reader(&file);
+    aircraftList.clear();
+    
+    Aircraft currentAircraft;
+    QString currentElement;
+    bool inRedAircraft = false;
+    bool inParameters = false;
+    
+    while (!reader.atEnd()) {
+        reader.readNext();
+        
+        if (reader.isStartElement()) {
+            currentElement = reader.name().toString();
+            
+            if (currentElement == "red_aircraft") {
+                inRedAircraft = true;
+            } else if (currentElement == "parameters") {
+                inParameters = true;
+            } else if (currentElement == "aircraft" && inRedAircraft) {
+                currentAircraft = Aircraft();
+            }
+        } else if (reader.isEndElement()) {
+            QString endElement = reader.name().toString();
+            
+            if (endElement == "red_aircraft") {
+                inRedAircraft = false;
+            } else if (endElement == "parameters") {
+                inParameters = false;
+            } else if (endElement == "aircraft" && inRedAircraft) {
+                aircraftList.append(currentAircraft);
+            }
+        } else if (reader.isCharacters() && !reader.isWhitespace()) {
+            QString text = reader.text().toString();
+            
+            if (inRedAircraft) {
+                if (currentElement == "id") currentAircraft.id = text.toInt();
+                else if (currentElement == "type") currentAircraft.type = text;
+                else if (currentElement == "longitude") currentAircraft.longitude = text.toDouble();
+                else if (currentElement == "latitude") currentAircraft.latitude = text.toDouble();
+                else if (currentElement == "altitude") currentAircraft.altitude = text.toDouble();
+                else if (currentElement == "speed") currentAircraft.speed = text.toDouble();
+                else if (currentElement == "heading") currentAircraft.heading = text.toDouble();
+                else if (currentElement == "status") currentAircraft.status = text;
+            } else if (inParameters) {
+                if (currentElement == "blue_count") params["blue_count"] = text.toInt();
+                else if (currentElement == "strategy") params["strategy"] = text;
+                else if (currentElement == "task_mode") params["task_mode"] = text;
+            }
+        }
+    }
+    
+    file.close();
+    
+    if (reader.hasError()) {
+        return false;
+    }
+    
+    return true;
 }

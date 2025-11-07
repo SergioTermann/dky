@@ -13,6 +13,7 @@ import random
 import tkinter as tk
 from tkinter import filedialog
 import os
+import xml.etree.ElementTree as ET
 
 
 # 1. Define data classes
@@ -722,10 +723,61 @@ def convert_to_xyz(aircraft):
     
     return {'x': x, 'y': y, 'z': z, 'vx': vx, 'vy': vy, 'vz': vz}
 
-def load_situation_data(json_file):
-    """从JSON文件加载态势数据"""
-    with open(json_file, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+def load_xml_situation_data(xml_file):
+    """从XML文件加载态势数据"""
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+    
+    data = {'red_aircraft': [], 'blue_aircraft': [], 'parameters': {}}
+    
+    # 解析红方飞机
+    red_aircraft_elem = root.find('red_aircraft')
+    if red_aircraft_elem is not None:
+        for aircraft_elem in red_aircraft_elem.findall('aircraft'):
+            aircraft = {}
+            for child in aircraft_elem:
+                if child.tag in ['id']:
+                    aircraft[child.tag] = int(child.text)
+                elif child.tag in ['longitude', 'latitude', 'altitude', 'speed', 'heading']:
+                    aircraft[child.tag] = float(child.text)
+                else:
+                    aircraft[child.tag] = child.text
+            data['red_aircraft'].append(aircraft)
+    
+    # 解析蓝方飞机
+    blue_aircraft_elem = root.find('blue_aircraft')
+    if blue_aircraft_elem is not None:
+        for aircraft_elem in blue_aircraft_elem.findall('aircraft'):
+            aircraft = {}
+            for child in aircraft_elem:
+                if child.tag in ['id']:
+                    aircraft[child.tag] = int(child.text)
+                elif child.tag in ['longitude', 'latitude', 'altitude', 'speed', 'heading']:
+                    aircraft[child.tag] = float(child.text)
+                else:
+                    aircraft[child.tag] = child.text
+            data['blue_aircraft'].append(aircraft)
+    
+    # 解析参数
+    params_elem = root.find('parameters')
+    if params_elem is not None:
+        for child in params_elem:
+            if child.tag == 'blue_count':
+                data['parameters'][child.tag] = int(child.text)
+            else:
+                data['parameters'][child.tag] = child.text
+    
+    return data
+
+def load_situation_data(situation_file):
+    """从JSON或XML文件加载态势数据"""
+    # 根据文件扩展名选择解析方式
+    if situation_file.lower().endswith('.xml'):
+        data = load_xml_situation_data(situation_file)
+    else:
+        # 默认使用JSON解析
+        with open(situation_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
     
     # 将红方飞机转换为攻击无人机数据
     attack_drones_data = {}
@@ -1229,16 +1281,18 @@ class DroneSimulation:
 
 # 5. Main execution
 def select_json_file():
-    """使用文件对话框选择JSON文件"""
+    """使用文件对话框选择态势文件（JSON或XML）"""
     # 创建一个隐藏的根窗口
     root = tk.Tk()
     root.withdraw()  # 隐藏主窗口
     
     # 打开文件选择对话框
     file_path = filedialog.askopenfilename(
-        title="选择态势JSON文件",
+        title="选择态势文件",
         filetypes=[
+            ("支持的文件", "*.json;*.xml"),
             ("JSON文件", "*.json"),
+            ("XML文件", "*.xml"),
             ("所有文件", "*.*")
         ],
         initialdir=os.getcwd()  # 默认打开当前目录
@@ -1257,7 +1311,7 @@ if __name__ == "__main__":
         print(f"使用指定的态势文件: {situation_file}")
     else:
         # 弹出文件选择对话框
-        print("请选择态势JSON文件...")
+        print("请选择态势文件（JSON或XML）...")
         situation_file = select_json_file()
         
         if not situation_file:

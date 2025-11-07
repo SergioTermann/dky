@@ -7,6 +7,8 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QXmlStreamWriter>
+#include <QXmlStreamReader>
 #include <QStatusBar>
 #include <QLabel>
 #include <QTimer>
@@ -120,6 +122,10 @@ private:
     void updateSimulationControlFile(bool showLog = true);
     void enableSimulationControls(bool enable);
     void createPythonDebugScript(const QString &scriptPath);
+    
+    // XML文件处理函数
+    bool saveToXml(const QString &fileName, const QList<Aircraft> &redList, const QList<Aircraft> &blueList, const QJsonObject &params);
+    bool loadFromXml(const QString &fileName, QList<Aircraft> &aircraftList, QJsonObject &params);
 };
 
 #endif // MAINWINDOW_H

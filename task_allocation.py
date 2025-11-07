@@ -174,6 +174,35 @@ class TacviewStreamer:
             print(f"发送Tacview数据失败: {e}")
             return False
     
+    def send_target_area(self, target_area, timestamp):
+        """发送目标区域中心点标记到Tacview"""
+        if not self.is_connected or not self.client_socket:
+            return False
+            
+        try:
+            x, y = target_area
+            
+            # 发送中心靶心标记
+            longitude = (x - 50) * 0.01
+            latitude = (y - 50) * 0.01
+            altitude = 0  # 地面目标
+            
+            object_id = 9999999  # 中心点ID
+            
+            data = f'#{timestamp:.2f}\n'
+            data += f'{object_id},T={longitude:.7f}|{latitude:.7f}|{altitude:.1f},'
+            data += f'Type=Ground+Static+Bullseye,'
+            data += f'Name=目标中心,'
+            data += f'Color=Green,'
+            data += f'Coalition=Neutrals\n'
+            
+            self.client_socket.send(data.encode('utf-8'))
+            return True
+            
+        except Exception as e:
+            print(f"发送目标区域数据失败: {e}")
+            return False
+    
     def close(self):
         """关闭连接"""
         self.is_connected = False
@@ -1255,6 +1284,11 @@ class DroneSimulation:
         """Run the full simulation"""
         self.initialize_positions()
         print("开始无人机仿真...")
+        
+        # 在Tacview中显示目标区域中心点
+        if self.tacview_streamer and self.tacview_streamer.is_connected:
+            self.tacview_streamer.send_target_area(self.target_area, 0.0)
+            print(f"目标中心已发送到Tacview: {self.target_area}")
         
         self.update_positions(steps)
         metrics = self.calculate_performance_metrics()

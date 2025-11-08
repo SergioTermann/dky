@@ -983,7 +983,8 @@ class DroneSimulation:
     """Simulates drone movements and streams to Tacview"""
 
     def __init__(self, allocation_result, target_area=(80, 80), area_size=100, 
-                 enable_status_broadcast=True, status_broadcast_port=10114):
+                 enable_status_broadcast=True, status_broadcast_port=10114,
+                 control_file_path='simulation_control.json'):
         self.allocation_result = allocation_result
         self.target_area = target_area
         self.area_size = area_size
@@ -1005,11 +1006,13 @@ class DroneSimulation:
         self.status_socket = None
         
         # 推演控制参数
-        self.control_file_path = 'simulation_control.json'
+        self.control_file_path = control_file_path  # 使用传入的控制文件路径
         self.is_paused = False
         self.speed_multiplier = 1.0
         self.last_control_check_time = 0
         self.control_check_interval = 0.5  # 每0.5秒检查一次控制文件
+        
+        print(f"  控制文件路径: {self.control_file_path}")
         
         # 初始化态势广播套接字
         if self.enable_status_broadcast:

@@ -102,13 +102,13 @@ class TacviewStreamer:
                 
                 # 发送握手数据
                 print('\n【步骤1】发送握手数据...')
-                self.client_socket.send(self.handshake_data1.encode('utf-8'))
+                self.client_socket.sendall(self.handshake_data1.encode('utf-8'))
                 print(f'  > {self.handshake_data1.strip()}')
-                self.client_socket.send(self.handshake_data2.encode('utf-8'))
+                self.client_socket.sendall(self.handshake_data2.encode('utf-8'))
                 print(f'  > {self.handshake_data2.strip()}')
-                self.client_socket.send(self.handshake_data3.encode('utf-8'))
+                self.client_socket.sendall(self.handshake_data3.encode('utf-8'))
                 print(f'  > {self.handshake_data3.strip()}')
-                self.client_socket.send(b'\x00')
+                self.client_socket.sendall(b'\x00')
                 print('  > NULL字节')
                 
                 # 接收握手响应
@@ -118,15 +118,15 @@ class TacviewStreamer:
                 
                 # 发送文件头和参考时间（匹配训练文件格式）
                 print('\n【步骤3】发送ACMI文件头...')
-                self.client_socket.send(self.tel_file_header.encode('utf-8'))
+                self.client_socket.sendall(self.tel_file_header.encode('utf-8'))
                 print(f'  > {self.tel_file_header.strip()}')
                 
                 current_time = time.strftime(self.tel_reference_time_format, time.gmtime()).encode('utf-8')
-                self.client_socket.send(current_time)
+                self.client_socket.sendall(current_time)
                 print(f'  > {current_time.decode().strip()}')
                 
                 # 发送标题（匹配训练文件格式）
-                self.client_socket.send(self.tel_title.encode('utf-8'))
+                self.client_socket.sendall(self.tel_title.encode('utf-8'))
                 print(f'  > {self.tel_title.strip()}')
                 
                 # 打开日志文件，记录发送的数据
@@ -266,76 +266,51 @@ class TacviewStreamer:
             return None
     
     def send_frame_data(self, timestamp, drone_data_list):
-        """批量发送一帧的所有无人机数据 - 优化版本"""
+        """批量发送一帧的所有无人机数据 - 参考fourty_enemy.py优化"""
         if not self.is_connected or not self.client_socket:
             return False
             
         try:
             drone_count = len(drone_data_list)
             
-            # 使用列表构建，比字符串拼接效率高
-            frame_parts = [f'#{timestamp:.2f}\n']
+            # 参考fourty_enemy.py的简洁写法：直接字符串拼接
+            message = f'#{timestamp:.2f}\n'  # 时间戳帧头
             
-            # 添加所有有效的飞机数据
+            # 拼接所有飞机数据
             for data_line in drone_data_list:
                 if data_line:
-                    frame_parts.append(data_line)
+                    message += data_line
             
-            # 一次性合并所有数据
-            frame_data = ''.join(frame_parts)
-            encoded_data = frame_data.encode('utf-8')
+            # 编码并发送
+            encoded_data = message.encode('utf-8')
             data_size = len(encoded_data)
             
             # 写入日志文件
             if self.log_file:
                 try:
                     self.log_file.write(f'【时刻 {timestamp:.2f}s】 飞机数: {drone_count}  数据大小: {data_size}字节\n')
-                    self.log_file.write(frame_data)
+                    self.log_file.write(message)
                     self.log_file.write('\n')
-                    self.log_file.flush()  # 立即写入磁盘
-                except Exception as e:
-                    # 写入日志失败不影响主流程
-                    pass
+                    self.log_file.flush()
+                except:
+                    pass  # 日志写入失败不影响主流程
             
-            # 使用 sendall 确保完整发送（不会出现部分发送）
-            if data_size > 65536:  # 超过64KB
-                print(f'\n【优化】大数据帧处理')
-                print(f'  数据大小: {data_size} 字节')
-                print(f'  飞机数量: {drone_count} 架')
-                
-                # 对于大数据包，分批构建并发送（避免内存压力）
-                batch_size = 50
-                batch_count = 0
-                
-                for i in range(0, len(drone_data_list), batch_size):
-                    # 每批使用独立的时间戳
-                    batch_parts = [f'#{timestamp:.2f}\n']
-                    batch_parts.extend(line for line in drone_data_list[i:i+batch_size] if line)
-                    batch_data = ''.join(batch_parts)
-                    
-                    # 使用 sendall 确保完整发送
-                    self.client_socket.sendall(batch_data.encode('utf-8'))
-                    batch_count += 1
-                    
-                print(f'  ✓ 发送完成，共 {batch_count} 批 | 每批最多 {batch_size} 架')
-            else:
-                # 小于64KB，直接发送（使用sendall确保完整）
-                self.client_socket.sendall(encoded_data)
-                
-                # 统计信息（每20帧打印一次，减少日志）
-                if not hasattr(self, '_frame_counter'):
-                    self._frame_counter = 0
-                    self._total_sent = 0
-                    self._last_print_frame = 0
-                
-                self._frame_counter += 1
-                self._total_sent += data_size
-                
-                # 每20帧打印一次，减少日志输出
-                if self._frame_counter - self._last_print_frame >= 20:
-                    avg_size = self._total_sent / self._frame_counter
-                    print(f'【Tacview发送】帧 {self._frame_counter} | 飞机: {drone_count} | 本帧: {data_size}B | 平均: {avg_size:.0f}B')
-                    self._last_print_frame = self._frame_counter
+            # 使用 sendall 确保完整发送
+            self.client_socket.sendall(encoded_data)
+            
+            # 统计信息（每20帧打印一次）
+            if not hasattr(self, '_frame_counter'):
+                self._frame_counter = 0
+                self._total_sent = 0
+                self._last_print_frame = 0
+            
+            self._frame_counter += 1
+            self._total_sent += data_size
+            
+            if self._frame_counter - self._last_print_frame >= 20:
+                avg_size = self._total_sent / self._frame_counter
+                print(f'【Tacview发送】帧 {self._frame_counter} | 飞机: {drone_count} | 本帧: {data_size}B | 平均: {avg_size:.0f}B')
+                self._last_print_frame = self._frame_counter
             
             return True
             
@@ -381,7 +356,7 @@ class TacviewStreamer:
             # 注意：目标中心点不带时间戳，直接发送
             data = f'{object_id},T={longitude:.7f}|{latitude:.7f}|{altitude:.1f}, Type=Ground+Static+Building, Name=Competition, EngagementRange=30000\n'
             
-            self.client_socket.send(data.encode('utf-8'))
+            self.client_socket.sendall(data.encode('utf-8'))
             
             # 同时写入日志文件
             if self.log_file:

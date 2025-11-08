@@ -53,20 +53,30 @@ class TacviewStreamer:
         self.handshake_data2 = 'Tacview.RealTimeTelemetry.0\n'
         self.handshake_data3 = 'alpha_dog_fight\n'
         
-        # 数据格式
-        self.tel_file_header = "FileType=text/acmi/tacview\nFileVersion=2.2\n"
+        # 数据格式（匹配训练文件格式）
+        self.tel_file_header = "FileType=text/acmi/tacview\nFileVersion=2.1\n"
         self.tel_reference_time_format = '0,ReferenceTime=%Y-%m-%dT%H:%M:%SZ\n'
+        self.tel_title = '0,Title = test simple aircraft\n'
+        
+        # 数据日志文件
+        self.log_file = None
+        self.log_file_path = 'tacview_data_log.txt'
         
     def start_server(self):
         """启动Tacview服务器"""
         try:
             self.socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
             self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)  # 允许端口重用
+            
+            # 增加发送缓冲区大小，支持大数据量传输
+            self.socket.setsockopt(SOL_SOCKET, SO_SNDBUF, 524288)  # 512KB发送缓冲区
+            
             self.socket.bind((self.local_ip, self.local_port))
             self.socket.listen()
             print('\n' + '=' * 70)
             print('【Tacview服务器启动】')
             print(f'  监听地址: {self.local_ip}:{self.local_port}')
+            print(f'  发送缓冲区: 512KB (支持大规模飞机)')
             print('  等待Tacview客户端连接... (5秒超时)')
             print('=' * 70)
             
@@ -76,7 +86,19 @@ class TacviewStreamer:
             try:
                 # 等待客户端连接
                 self.client_socket, addr = self.socket.accept()
+                
+                # 为客户端连接设置缓冲区和优化参数
+                self.client_socket.setsockopt(SOL_SOCKET, SO_SNDBUF, 524288)  # 512KB发送缓冲
+                try:
+                    # 禁用Nagle算法，减少延迟（立即发送小数据包）
+                    import socket as sock_module
+                    self.client_socket.setsockopt(sock_module.IPPROTO_TCP, sock_module.TCP_NODELAY, 1)
+                except AttributeError:
+                    # 如果TCP_NODELAY不可用，跳过
+                    pass
+                
                 print(f'\n✓ Tacview客户端已连接: {addr}')
+                print(f'  Socket优化: 512KB缓冲区 + TCP_NODELAY')
                 
                 # 发送握手数据
                 print('\n【步骤1】发送握手数据...')
@@ -94,7 +116,7 @@ class TacviewStreamer:
                 data = self.client_socket.recv(1024)
                 print(f'  < 握手响应: {data}')
                 
-                # 发送文件头和参考时间
+                # 发送文件头和参考时间（匹配训练文件格式）
                 print('\n【步骤3】发送ACMI文件头...')
                 self.client_socket.send(self.tel_file_header.encode('utf-8'))
                 print(f'  > {self.tel_file_header.strip()}')
@@ -102,6 +124,28 @@ class TacviewStreamer:
                 current_time = time.strftime(self.tel_reference_time_format, time.gmtime()).encode('utf-8')
                 self.client_socket.send(current_time)
                 print(f'  > {current_time.decode().strip()}')
+                
+                # 发送标题（匹配训练文件格式）
+                self.client_socket.send(self.tel_title.encode('utf-8'))
+                print(f'  > {self.tel_title.strip()}')
+                
+                # 打开日志文件，记录发送的数据
+                try:
+                    self.log_file = open(self.log_file_path, 'w', encoding='utf-8')
+                    # 写入文件头信息
+                    self.log_file.write('=' * 80 + '\n')
+                    self.log_file.write('Tacview数据日志\n')
+                    self.log_file.write(f'开始时间: {time.strftime("%Y-%m-%d %H:%M:%S")}\n')
+                    self.log_file.write('=' * 80 + '\n\n')
+                    self.log_file.write('【文件头】\n')
+                    self.log_file.write(self.tel_file_header)
+                    self.log_file.write(current_time.decode('utf-8'))
+                    self.log_file.write(self.tel_title)
+                    self.log_file.write('\n' + '-' * 80 + '\n\n')
+                    self.log_file.flush()
+                    print(f'  > 数据日志文件: {self.log_file_path}')
+                except Exception as e:
+                    print(f'  ⚠ 无法创建日志文件: {e}')
                 
                 self.is_connected = True
                 print('\n' + '=' * 70)
@@ -144,6 +188,12 @@ class TacviewStreamer:
             latitude = (y - 50) * 0.01   # 将y坐标转换为纬度
             altitude = z
             
+            # 确保经纬度在有效范围内
+            # 经度范围：-180 到 +180
+            longitude = max(-180.0, min(180.0, longitude))
+            # 纬度范围：-90 到 +90
+            latitude = max(-90.0, min(90.0, latitude))
+            
             # 姿态角度
             roll = random.uniform(-5, 5)
             pitch = random.uniform(-5, 5)
@@ -166,25 +216,48 @@ class TacviewStreamer:
                 yaw = 0
             
             speed = math.sqrt(vx**2 + vy**2)
-            agl = altitude - 10  # 地面高度
-            tas = speed * 3.6  # 转换为km/h
-            cas = tas * 0.9  # 校准空速
             
-            # 设置颜色和阵营
+            # 计算马赫数（假设在海平面，音速约340m/s）
+            mach = speed / 340.0 if speed > 0 else 0.8
+            mach = min(mach, 2.0)  # 限制最大马赫数
+            
+            # 设置颜色和阵营（参考训练文件格式）
             if drone_type == 'attack':
                 color = 'Red'
                 coalition = 'Enemies'
-                name = f'Attack_{drone_id}'
+                name = 'F-16'
+                short_name = f'F-16  {drone_id[1:]}  3.00'  # 格式如 "F-16  1  3.00"
             else:
                 color = 'Blue'
-                coalition = 'Allies'
-                name = f'Defense_{drone_id}'
+                coalition = 'Enemies'  # 蓝方也标记为Enemies（对抗模式）
+                name = 'F-16'
+                short_name = f'F-16  {drone_id[1:]}  3.00'  # 格式如 "F-16  1  3.00"
             
-            # 生成唯一ID (基于drone_id)
-            object_id = 3000000 + hash(drone_id) % 100000
+            # 生成唯一ID - 确保红蓝双方至少各支持100架不重复
+            # 攻击型（红方）：1-9999
+            # 防御型（蓝方）：10001-19999
+            # 这样可以支持每方最多9999架飞机
+            if drone_type == 'attack':
+                # 红方：从drone_id "A1", "A2", ... 提取数字
+                object_id = int(''.join(filter(str.isdigit, drone_id)))
+            else:
+                # 蓝方：基数10000 + 提取的数字
+                object_id = 10000 + int(''.join(filter(str.isdigit, drone_id)))
             
-            # 返回格式化的数据行（不包含时间戳）
-            data = f'{object_id},T={longitude:.7f}|{latitude:.7f}|{altitude:.7f}|{roll:.1f}|{pitch:.1f}|{yaw:.1f},AGL={agl:.3f},TAS={tas:.3f},CAS={cas:.3f},Type=Air+F-16,Name={name},Color={color},Coalition={coalition}\n'
+            # 返回格式化的数据行（完全匹配训练文件格式）
+            # 格式：ID,T=经度|纬度|高度|roll|pitch|yaw,Type=Air+FixedWing,Coalition=Enemies,Color=Red/Blue,Name=F-16,Mach=0.800,ShortName=...,RadarMode=1,RadarRange=2000,RadarHorizontalBeamwidth=10,RadarVerticalBeamwidth=10
+            data = (f'{object_id},'
+                   f'T={longitude:.7f}|{latitude:.7f}|{altitude:.7f}|{roll:.7f}|{pitch:.7f}|{yaw:.7f},'
+                   f'Type=Air+FixedWing,'
+                   f'Coalition={coalition},'
+                   f'Color={color},'
+                   f'Name={name},'
+                   f'Mach={mach:.3f},'
+                   f'ShortName={short_name},'
+                   f'RadarMode=1,'
+                   f'RadarRange=2000,'
+                   f'RadarHorizontalBeamwidth=10,'
+                   f'RadarVerticalBeamwidth=10\n')
             
             return data
             
@@ -193,71 +266,99 @@ class TacviewStreamer:
             return None
     
     def send_frame_data(self, timestamp, drone_data_list):
-        """批量发送一帧的所有无人机数据"""
+        """批量发送一帧的所有无人机数据 - 优化版本"""
         if not self.is_connected or not self.client_socket:
             return False
             
         try:
-            # 构建完整的帧数据
-            frame_data = f'#{timestamp:.2f}\n'
-            
-            # 添加所有无人机数据
-            for data_line in drone_data_list:
-                if data_line:  # 确保数据有效
-                    frame_data += data_line
-            
-            # 编码数据
-            encoded_data = frame_data.encode('utf-8')
-            data_size = len(encoded_data)
             drone_count = len(drone_data_list)
             
-            # 检查数据大小（如果超过64KB，分批发送）
-            if data_size > 65536:
-                print(f'\n【警告】帧数据过大')
+            # 使用列表构建，比字符串拼接效率高
+            frame_parts = [f'#{timestamp:.2f}\n']
+            
+            # 添加所有有效的飞机数据
+            for data_line in drone_data_list:
+                if data_line:
+                    frame_parts.append(data_line)
+            
+            # 一次性合并所有数据
+            frame_data = ''.join(frame_parts)
+            encoded_data = frame_data.encode('utf-8')
+            data_size = len(encoded_data)
+            
+            # 写入日志文件
+            if self.log_file:
+                try:
+                    self.log_file.write(f'【时刻 {timestamp:.2f}s】 飞机数: {drone_count}  数据大小: {data_size}字节\n')
+                    self.log_file.write(frame_data)
+                    self.log_file.write('\n')
+                    self.log_file.flush()  # 立即写入磁盘
+                except Exception as e:
+                    # 写入日志失败不影响主流程
+                    pass
+            
+            # 使用 sendall 确保完整发送（不会出现部分发送）
+            if data_size > 65536:  # 超过64KB
+                print(f'\n【优化】大数据帧处理')
                 print(f'  数据大小: {data_size} 字节')
                 print(f'  飞机数量: {drone_count} 架')
-                print(f'  将分批发送（每批50架）')
-                # 分批发送
-                batch_size = 50  # 每批最多50架飞机
+                
+                # 对于大数据包，分批构建并发送（避免内存压力）
+                batch_size = 50
                 batch_count = 0
+                
                 for i in range(0, len(drone_data_list), batch_size):
-                    batch_data = f'#{timestamp:.2f}\n'
-                    for data_line in drone_data_list[i:i+batch_size]:
-                        if data_line:
-                            batch_data += data_line
-                    self.client_socket.send(batch_data.encode('utf-8'))
+                    # 每批使用独立的时间戳
+                    batch_parts = [f'#{timestamp:.2f}\n']
+                    batch_parts.extend(line for line in drone_data_list[i:i+batch_size] if line)
+                    batch_data = ''.join(batch_parts)
+                    
+                    # 使用 sendall 确保完整发送
+                    self.client_socket.sendall(batch_data.encode('utf-8'))
                     batch_count += 1
-                print(f'  ✓ 发送完成，共 {batch_count} 批')
+                    
+                print(f'  ✓ 发送完成，共 {batch_count} 批 | 每批最多 {batch_size} 架')
             else:
-                # 一次性发送整帧数据
-                self.client_socket.send(encoded_data)
-                # 每10帧打印一次统计
+                # 小于64KB，直接发送（使用sendall确保完整）
+                self.client_socket.sendall(encoded_data)
+                
+                # 统计信息（每20帧打印一次，减少日志）
                 if not hasattr(self, '_frame_counter'):
                     self._frame_counter = 0
                     self._total_sent = 0
+                    self._last_print_frame = 0
                 
                 self._frame_counter += 1
                 self._total_sent += data_size
                 
-                if self._frame_counter % 10 == 0:
+                # 每20帧打印一次，减少日志输出
+                if self._frame_counter - self._last_print_frame >= 20:
                     avg_size = self._total_sent / self._frame_counter
-                    print(f'【Tacview发送统计】第 {self._frame_counter} 帧 | 飞机: {drone_count} | 本帧: {data_size}B | 平均: {avg_size:.0f}B')
+                    print(f'【Tacview发送】帧 {self._frame_counter} | 飞机: {drone_count} | 本帧: {data_size}B | 平均: {avg_size:.0f}B')
+                    self._last_print_frame = self._frame_counter
             
             return True
             
+        except BrokenPipeError:
+            print('\n【错误】Tacview连接已断开（Broken Pipe）')
+            self.is_connected = False
+            return False
         except Exception as e:
             print('\n' + '!' * 70)
             print(f'【错误】发送Tacview帧数据失败')
+            print(f'  错误类型: {type(e).__name__}')
             print(f'  错误信息: {e}')
             print(f'  时间戳: {timestamp}')
             print(f'  飞机数量: {len(drone_data_list)}')
             import traceback
             traceback.print_exc()
             print('!' * 70 + '\n')
+            self.is_connected = False  # 标记为断开
             return False
     
-    def send_target_area(self, target_area, timestamp):
-        """发送目标区域中心点标记到Tacview"""
+    def send_target_area(self, target_area):
+        """发送目标区域中心点标记到Tacview（匹配训练文件格式）
+        注意：这应该在文件头之后、第一个时间戳帧之前发送"""
         if not self.is_connected or not self.client_socket:
             return False
             
@@ -267,18 +368,32 @@ class TacviewStreamer:
             # 发送中心靶心标记
             longitude = (x - 50) * 0.01
             latitude = (y - 50) * 0.01
+            
+            # 确保经纬度在有效范围内
+            longitude = max(-180.0, min(180.0, longitude))
+            latitude = max(-90.0, min(90.0, latitude))
+            
             altitude = 0  # 地面目标
             
-            object_id = 9999999  # 中心点ID
+            object_id = 1000000  # 固定ID（匹配训练文件）
             
-            data = f'#{timestamp:.2f}\n'
-            data += f'{object_id},T={longitude:.7f}|{latitude:.7f}|{altitude:.1f},'
-            data += f'Type=Ground+Static+Bullseye,'
-            data += f'Name=目标中心,'
-            data += f'Color=Green,'
-            data += f'Coalition=Neutrals\n'
+            # 格式匹配训练文件：1000000,T=160.123456|24.8976763|0, Type=Ground+Static+Building, Name=Competition, EngagementRange=30000
+            # 注意：目标中心点不带时间戳，直接发送
+            data = f'{object_id},T={longitude:.7f}|{latitude:.7f}|{altitude:.1f}, Type=Ground+Static+Building, Name=Competition, EngagementRange=30000\n'
             
             self.client_socket.send(data.encode('utf-8'))
+            
+            # 同时写入日志文件
+            if self.log_file:
+                try:
+                    self.log_file.write('【目标中心点】\n')
+                    self.log_file.write(data)
+                    self.log_file.write('\n')
+                    self.log_file.flush()
+                except:
+                    pass
+            
+            print(f'  > 目标中心点已发送: {longitude:.7f}, {latitude:.7f}')
             return True
             
         except Exception as e:
@@ -299,6 +414,18 @@ class TacviewStreamer:
                 self.socket.close()
         except:
             pass
+        
+        # 关闭日志文件
+        if self.log_file:
+            try:
+                self.log_file.write('\n' + '=' * 80 + '\n')
+                self.log_file.write(f'结束时间: {time.strftime("%Y-%m-%d %H:%M:%S")}\n')
+                self.log_file.write('=' * 80 + '\n')
+                self.log_file.close()
+                print(f"数据日志已保存: {self.log_file_path}")
+            except:
+                pass
+        
         print("Tacview连接已关闭")
 
 
@@ -391,25 +518,69 @@ class GameBasedTaskAllocation:
         return self.coalition_value_function(coalition_with_drone) - self.coalition_value_function(coalition)
 
     def calculate_shapley_value(self, drone: str) -> float:
-        """计算单个无人机的Shapley值"""
+        """计算单个无人机的Shapley值（采样近似方法，适用于大规模飞机）"""
         shapley_value = 0.0
         other_drones = [d for d in self.U if d != drone]
         n = len(self.U)
-
-        for size in range(len(other_drones) + 1):
-            for coalition_tuple in combinations(other_drones, size):
-                coalition = set(coalition_tuple)
-                s_size = len(coalition)
-                weight = (math.factorial(s_size) * math.factorial(n - s_size - 1)) / math.factorial(n)
+        
+        # 对于大规模飞机（超过20架），使用采样方法
+        if n > 20:
+            # 采样次数：最多1000次，确保快速计算
+            num_samples = min(1000, max(100, n * 5))
+            
+            for _ in range(num_samples):
+                # 随机采样一个联盟大小
+                coalition_size = random.randint(0, len(other_drones))
+                # 随机选择联盟成员
+                if coalition_size > 0:
+                    coalition = set(random.sample(other_drones, coalition_size))
+                else:
+                    coalition = set()
+                
+                # 计算边际贡献
                 marginal_contrib = self.marginal_contribution(drone, coalition)
-                shapley_value += weight * marginal_contrib
+                shapley_value += marginal_contrib
+            
+            # 取平均值作为近似Shapley值
+            shapley_value /= num_samples
+            
+        else:
+            # 小规模飞机（≤20架）使用精确计算
+            for size in range(len(other_drones) + 1):
+                for coalition_tuple in combinations(other_drones, size):
+                    coalition = set(coalition_tuple)
+                    s_size = len(coalition)
+                    weight = (math.factorial(s_size) * math.factorial(n - s_size - 1)) / math.factorial(n)
+                    marginal_contrib = self.marginal_contribution(drone, coalition)
+                    shapley_value += weight * marginal_contrib
 
         return shapley_value
 
     def compute_all_shapley_values(self):
         """计算所有无人机的Shapley值"""
-        for drone in self.U:
+        total_drones = len(self.U)
+        print(f"\n【计算Shapley值】")
+        print(f"  飞机总数: {total_drones} 架")
+        
+        if total_drones > 20:
+            print(f"  使用采样近似方法（大规模优化）")
+            print(f"  采样次数: {min(1000, max(100, total_drones * 5))} 次/架")
+        else:
+            print(f"  使用精确计算方法")
+        
+        start_time = time.time()
+        
+        for i, drone in enumerate(self.U):
             self.shapley_values[drone] = self.calculate_shapley_value(drone)
+            
+            # 每处理10%输出进度
+            if (i + 1) % max(1, total_drones // 10) == 0:
+                progress = (i + 1) / total_drones * 100
+                elapsed = time.time() - start_time
+                print(f"  进度: {i+1}/{total_drones} ({progress:.0f}%) | 已用时: {elapsed:.1f}秒")
+        
+        elapsed = time.time() - start_time
+        print(f"  ✓ Shapley值计算完成，耗时: {elapsed:.2f}秒\n")
 
     def initialize_task_groups(self) -> List[TaskGroup]:
         """初始化任务分组"""
@@ -816,9 +987,13 @@ def convert_to_xyz(aircraft):
     # 地球半径（单位：千米）
     R = 6371.0
     
+    # 确保输入的经纬度在有效范围内
+    longitude = max(-180.0, min(180.0, aircraft['longitude']))
+    latitude = max(-90.0, min(90.0, aircraft['latitude']))
+    
     # 将经纬度转换为弧度
-    lat = math.radians(aircraft['latitude'])
-    lon = math.radians(aircraft['longitude'])
+    lat = math.radians(latitude)
+    lon = math.radians(longitude)
     
     # 计算x,y,z坐标（相对于原点）
     x = R * math.cos(lat) * math.cos(lon)
@@ -853,6 +1028,13 @@ def load_xml_situation_data(xml_file):
                     aircraft[child.tag] = float(child.text)
                 else:
                     aircraft[child.tag] = child.text
+            
+            # 确保经纬度在有效范围内
+            if 'longitude' in aircraft:
+                aircraft['longitude'] = max(-180.0, min(180.0, aircraft['longitude']))
+            if 'latitude' in aircraft:
+                aircraft['latitude'] = max(-90.0, min(90.0, aircraft['latitude']))
+            
             data['red_aircraft'].append(aircraft)
     
     # 解析蓝方飞机
@@ -867,6 +1049,13 @@ def load_xml_situation_data(xml_file):
                     aircraft[child.tag] = float(child.text)
                 else:
                     aircraft[child.tag] = child.text
+            
+            # 确保经纬度在有效范围内
+            if 'longitude' in aircraft:
+                aircraft['longitude'] = max(-180.0, min(180.0, aircraft['longitude']))
+            if 'latitude' in aircraft:
+                aircraft['latitude'] = max(-90.0, min(90.0, aircraft['latitude']))
+            
             data['blue_aircraft'].append(aircraft)
     
     # 解析参数
@@ -889,6 +1078,19 @@ def load_situation_data(situation_file):
         # 默认使用JSON解析
         with open(situation_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
+    
+    # 确保JSON数据中的经纬度在有效范围内
+    for aircraft in data.get('red_aircraft', []):
+        if 'longitude' in aircraft:
+            aircraft['longitude'] = max(-180.0, min(180.0, aircraft['longitude']))
+        if 'latitude' in aircraft:
+            aircraft['latitude'] = max(-90.0, min(90.0, aircraft['latitude']))
+    
+    for aircraft in data.get('blue_aircraft', []):
+        if 'longitude' in aircraft:
+            aircraft['longitude'] = max(-180.0, min(180.0, aircraft['longitude']))
+        if 'latitude' in aircraft:
+            aircraft['latitude'] = max(-90.0, min(90.0, aircraft['latitude']))
     
     # 将红方飞机转换为攻击无人机数据
     attack_drones_data = {}
@@ -948,6 +1150,7 @@ def load_situation_data(situation_file):
     initial_positions = {**attack_initial_positions, **defense_initial_positions}
     
     return attack_drones_data, defense_drones_data, initial_positions
+
 
 def execute_task_allocation(json_file):
     """执行任务分配"""
@@ -1191,6 +1394,10 @@ class DroneSimulation:
         max_step_time = 0  # 记录最大单步运行时间
         actual_step = 0  # 实际执行的步数（不包含暂停时的步数）
         
+        # Tacview时间戳：从0.0开始，每步增加0.01
+        tacview_timestamp = 0.0
+        tacview_time_step = 0.01  # 匹配训练文件格式
+        
         step = 0
         while step < steps:
             step_start_time = time.time()  # 记录单步开始时间
@@ -1206,9 +1413,10 @@ class DroneSimulation:
                 time.sleep(0.1)  # 暂停时仍然休眠，避免CPU占用
                 continue  # 跳过本帧的所有计算和发送（不增加step）
             
-            # 推演未暂停，增加实际步数
+            # 推演未暂停，增加实际步数和Tacview时间戳
             actual_step += 1
             step += 1
+            tacview_timestamp += tacview_time_step  # 时间戳递增0.01
             
             # Calculate group centers
             group_centers = {}
@@ -1345,30 +1553,29 @@ class DroneSimulation:
                     self.drone_headings[drone_id] = current_heading
                     self.drone_angular_velocities[drone_id] = angular_velocity
 
-            # 批量发送Tacview数据（每帧发送一次，包含所有飞机）
+            # 批量发送Tacview数据（每帧统一发送所有飞机）
             if self.tacview_streamer and self.tacview_streamer.is_connected:
                 try:
-                    timestamp = time.time()
+                    # 使用递增的Tacview时间戳（从0.01开始，每步0.01）
+                    
+                    # 使用列表推导式高效收集数据
                     drone_data_list = []
                     
-                    # 收集所有无人机的数据
-                    for drone_id, (drone_x, drone_y) in self.drone_positions.items():
-                        # 获取速度
-                        if drone_id in self.drone_velocities:
-                            vx, vy = self.drone_velocities[drone_id]
-                        else:
-                            vx, vy = 0, 0
+                    # 按顺序收集：先红方，再蓝方（保持一致性）
+                    for drone_id in sorted(self.drone_positions.keys()):
+                        drone_x, drone_y = self.drone_positions[drone_id]
+                        vx, vy = self.drone_velocities.get(drone_id, (0, 0))
                         
                         # 确定无人机类型
                         drone_type = 'attack' if drone_id.startswith('A') else 'defense'
                         
                         # 转换为Tacview坐标系 (经纬度和高度)
                         position = (drone_x, drone_y, 1000 + np.random.uniform(-50, 50))
-                        velocity = (vx * 10, vy * 10, 0)  # 适当放大速度以便在Tacview中可见
+                        velocity = (vx * 10, vy * 10, 0)
                         
-                        # 格式化数据
+                        # 格式化数据行（时间戳用于计算，但不包含在单行数据中）
                         data_line = self.tacview_streamer.send_drone_data(
-                            drone_id, position, velocity, drone_type, timestamp
+                            drone_id, position, velocity, drone_type, tacview_timestamp
                         )
                         if data_line:
                             drone_data_list.append(data_line)
@@ -1376,9 +1583,10 @@ class DroneSimulation:
                     # 第一帧时打印数据示例
                     if actual_step == 1 and drone_data_list:
                         print('\n' + '=' * 70)
-                        print('【第一帧数据示例】')
-                        print(f'  时间戳: #{timestamp:.2f}')
-                        print(f'  飞机总数: {len(drone_data_list)}')
+                        print('【第一帧数据示例】统一时刻发送所有飞机')
+                        print(f'  时间戳: #{tacview_timestamp:.2f}')
+                        print(f'  飞机总数: {len(drone_data_list)} 架')
+                        print(f'  数据大小: {sum(len(line.encode()) for line in drone_data_list)} 字节')
                         print('  前3架飞机数据:')
                         for i, line in enumerate(drone_data_list[:3]):
                             print(f'    [{i+1}] {line.strip()}')
@@ -1386,13 +1594,16 @@ class DroneSimulation:
                             print(f'    ... 还有 {len(drone_data_list)-3} 架飞机')
                         print('=' * 70 + '\n')
                     
-                    # 批量发送整帧数据
+                    # 统一时刻批量发送整帧数据（一次性发送）
                     if drone_data_list:
-                        self.tacview_streamer.send_frame_data(timestamp, drone_data_list)
+                        success = self.tacview_streamer.send_frame_data(tacview_timestamp, drone_data_list)
+                        if not success:
+                            print('【警告】Tacview发送失败，连接可能已断开')
                         
                 except Exception as e:
-                    # 忽略Tacview发送错误，继续仿真
-                    print(f'【错误】Tacview数据发送异常: {e}')
+                    # 捕获异常但继续仿真
+                    if actual_step <= 5:  # 只在前5帧报告错误
+                        print(f'【错误】Tacview数据发送异常: {e}')
                     pass
 
             # 每50步输出一次进度（已禁用，避免日志过多）
@@ -1489,10 +1700,9 @@ class DroneSimulation:
         self._read_control_file()
         print(f"  初始状态: {'暂停' if self.is_paused else '运行'} | 倍速: {self.speed_multiplier}x")
         
-        # 在Tacview中显示目标区域中心点
+        # 在Tacview中显示目标区域中心点（在第一帧之前发送）
         if self.tacview_streamer and self.tacview_streamer.is_connected:
-            self.tacview_streamer.send_target_area(self.target_area, 0.0)
-            print(f"  目标中心已发送到Tacview: {self.target_area}")
+            self.tacview_streamer.send_target_area(self.target_area)
             print(f"  Tacview数据流已启动，使用批量发送模式（支持大规模飞机）")
         
         print(f"\n提示: 可通过界面的暂停/继续按钮和倍速选择器实时控制推演\n")

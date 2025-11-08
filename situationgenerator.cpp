@@ -25,13 +25,23 @@ SituationGenerator::GenerationResult SituationGenerator::generateBlueSituation(
     int finalBlueCount = (userBlueCount > 0) ? userBlueCount : result.recommendedBlueCount;
     QString finalStrategy = (!userStrategy.isEmpty()) ? userStrategy : result.recommendedStrategy;
 
-    // 4. 生成蓝方飞机列表
+    // 4. 生成蓝方飞机列表（集中在较小区域内）
+    // 定义蓝方集中区域的中心点和范围
+    double centerLon = 110.0;  // 中心经度
+    double centerLat = 35.0;   // 中心纬度
+    double lonRange = 10.0;    // 经度范围 ±5度
+    double latRange = 10.0;    // 纬度范围 ±5度
+    
     for (int i = 0; i < finalBlueCount; i++) {
         Aircraft blueAircraft;
         blueAircraft.id = i + 1;
         blueAircraft.type = QString("蓝方飞机%1").arg(i + 1);
-        blueAircraft.longitude = qrand() % 1000; // 随机经度
-        blueAircraft.latitude = qrand() % 1000; // 随机纬度
+        
+        // 在中心点附近生成集中的飞机位置
+        // 经度范围：[105, 115]，纬度范围：[30, 40]
+        blueAircraft.longitude = centerLon + (qrand() % (int)(lonRange * 100)) / 100.0 - lonRange / 2;
+        blueAircraft.latitude = centerLat + (qrand() % (int)(latRange * 100)) / 100.0 - latRange / 2;
+        
         blueAircraft.altitude = 5000 + qrand() % 5000; // 随机高度5000-10000
         blueAircraft.speed = 400 + qrand() % 200; // 随机速度400-600
         blueAircraft.heading = qrand() % 360; // 随机航向0-359

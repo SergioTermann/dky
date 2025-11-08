@@ -17,9 +17,8 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     
-    // 设置控制文件路径（使用应用程序目录）
-    QString appDir = QCoreApplication::applicationDirPath();
-    controlFilePath = appDir + "/simulation_control.json";
+    // 设置控制文件路径（使用项目源码目录）
+    controlFilePath = PROJECT_ROOT_DIR + "simulation_control.json";
     
     initializeModels();
     initializeData();
@@ -505,15 +504,14 @@ void MainWindow::on_clearLogButton_clicked()
 
 void MainWindow::on_startSimulationButton_clicked()
 {
-    // 获取应用程序当前目录
-    QString appDir = QCoreApplication::applicationDirPath();
-    QString defaultFile = appDir + "/situation.json";
+    // 使用项目源码目录作为默认路径
+    QString defaultFile = PROJECT_ROOT_DIR + "situation.json";
     
     // 弹出文件选择对话框，让用户选择态势文件
     QString situationFilePath = QFileDialog::getOpenFileName(
         this,
         "选择态势文件",
-        defaultFile,  // 默认指向当前目录的 situation.json
+        defaultFile,  // 默认指向项目源码目录的 situation.json
         "支持的文件 (*.json *.xml);;JSON文件 (*.json);;XML文件 (*.xml);;所有文件 (*.*)"
     );
     
@@ -540,44 +538,66 @@ void MainWindow::on_startSimulationButton_clicked()
     // 调用Python文件
     QProcess *process = new QProcess(this);
     
-    // 优先使用当前目录的 Python 脚本，如果不存在则使用项目根目录的
-    QString pythonScriptPath = appDir + "/task_allocation.py";
-    QString workingDir = appDir;
+    // 使用项目源码目录的 Python 脚本
+    QString pythonScriptPath = PROJECT_ROOT_DIR + "task_allocation.py";
     
     if (!QFile::exists(pythonScriptPath)) {
-        // 尝试使用项目根目录的脚本
-        pythonScriptPath = PROJECT_ROOT_DIR + "task_allocation.py";
-        workingDir = PROJECT_ROOT_DIR;
-        
-        if (!QFile::exists(pythonScriptPath)) {
-            QMessageBox::critical(this, "错误", 
-                QString("找不到Python脚本\n在以下位置均未找到:\n1. %1\n2. %2")
-                .arg(appDir + "/task_allocation.py")
-                .arg(PROJECT_ROOT_DIR + "task_allocation.py"));
-            addLogMessage("找不到Python脚本文件", "ERROR");
-            enableSimulationControls(false);
-            return;
-        }
+        QMessageBox::critical(this, "错误", 
+            QString("找不到Python脚本：%1").arg(pythonScriptPath));
+        addLogMessage("找不到Python脚本文件", "ERROR");
+        enableSimulationControls(false);
+        return;
     }
     
-    // 设置工作目录
-    process->setWorkingDirectory(workingDir);
+    // 工作目录设置为项目源码目录（所有文件都在这里）
+    QString workDir = QString(PROJECT_ROOT_DIR).replace("\\", "/");
+    if (workDir.endsWith("/")) {
+        workDir.chop(1);  // 去掉末尾的斜杠
+    }
+    
+    process->setWorkingDirectory(workDir);
     process->setProcessChannelMode(QProcess::MergedChannels);
     process->setProgram("python");
-    // 传递态势文件路径和控制文件路径作为参数
-    process->setArguments(QStringList() << pythonScriptPath << situationFilePath << controlFilePath);
+    
+    // 传递态势文件路径和控制文件路径作为参数，添加 -u 参数使Python输出无缓冲
+    QStringList arguments;
+    arguments << "-u"  // 无缓冲模式，确保输出实时显示
+              << pythonScriptPath 
+              << situationFilePath 
+              << controlFilePath;
+    process->setArguments(arguments);
     
     addLogMessage(QString("执行Python脚本：%1").arg(pythonScriptPath), "INFO");
     addLogMessage(QString("态势文件：%1").arg(situationFilePath), "INFO");
     addLogMessage(QString("控制文件：%1").arg(controlFilePath), "INFO");
-    addLogMessage(QString("工作目录：%1").arg(workingDir), "INFO");
+    addLogMessage(QString("工作目录：%1").arg(workDir), "INFO");
+    addLogMessage("Python输出实时显示模式已启用", "INFO");
     
-    // 连接输出信号
-    connect(process, &QProcess::readyReadStandardOutput,
-            [=](){
+    // 连接输出信号（使用this捕获，实时显示Python输出）
+    connect(process, &QProcess::readyReadStandardOutput, this,
+            [this, process](){
                 QString output = QString::fromLocal8Bit(process->readAllStandardOutput());
                 if (!output.isEmpty()) {
-                    addLogMessage(QString("Python输出：%1").arg(output.trimmed()), "INFO");
+                    // 按行分割输出，每行单独显示
+                    QStringList lines = output.split('\n', QString::SkipEmptyParts);
+                    for (const QString &line : lines) {
+                        QString trimmedLine = line.trimmed();
+                        if (!trimmedLine.isEmpty()) {
+                            // 根据输出内容类型设置不同的日志级别
+                            if (trimmedLine.contains("错误") || trimmedLine.contains("ERROR") || 
+                                trimmedLine.contains("失败") || trimmedLine.startsWith("!")) {
+                                addLogMessage(trimmedLine, "ERROR");
+                            } else if (trimmedLine.contains("警告") || trimmedLine.contains("WARNING") || 
+                                       trimmedLine.startsWith("⚠")) {
+                                addLogMessage(trimmedLine, "WARNING");
+                            } else if (trimmedLine.contains("✓") || trimmedLine.contains("完成") || 
+                                       trimmedLine.contains("成功")) {
+                                addLogMessage(trimmedLine, "SUCCESS");
+                            } else {
+                                addLogMessage(trimmedLine, "INFO");
+                            }
+                        }
+                    }
                 }
             });
     

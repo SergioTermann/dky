@@ -1,0 +1,90 @@
+{
+    "blue_aircraft": [
+        {
+            "altitude": 9046,
+            "heading": 325,
+            "id": 1,
+            "latitude": 33.03,
+            "longitude": 106.76,
+            "speed": 505,
+            "status": "待命",
+            "type": "蓝方飞机1"
+        },
+        {
+            "altitude": 6009,
+            "heading": 138,
+            "id": 2,
+            "latitude": 31.35,
+            "longitude": 107.55,
+            "speed": 440,
+            "status": "待命",
+            "type": "蓝方飞机2"
+        },
+        {
+            "altitude": 5759,
+            "heading": 275,
+            "id": 3,
+            "latitude": 33.87,
+            "longitude": 112.67,
+            "speed": 551,
+            "status": "待命",
+            "type": "蓝方飞机3"
+        },
+        {
+            "altitude": 8536,
+            "heading": 249,
+            "id": 4,
+            "latitude": 31.05,
+            "longitude": 114.24,
+            "speed": 573,
+            "status": "待命",
+            "type": "蓝方飞机4"
+        },
+        {
+            "altitude": 7710,
+            "heading": 298,
+            "id": 5,
+            "latitude": 37.03,
+            "longitude": 110.47,
+            "speed": 486,
+            "status": "待命",
+            "type": "蓝方飞机5"
+        }
+    ],
+    "parameters": {
+        "blue_count": 5,
+        "strategy": "中等"
+    },
+    "red_aircraft": [
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 1,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 2,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 3,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        }
+    ]
+}

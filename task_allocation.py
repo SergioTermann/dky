@@ -56,7 +56,6 @@ class TacviewStreamer:
         # 数据格式
         self.tel_file_header = "FileType=text/acmi/tacview\nFileVersion=2.2\n"
         self.tel_reference_time_format = '0,ReferenceTime=%Y-%m-%dT%H:%M:%SZ\n'
-        self.tel_data_format = '#{:.2f}\n{},T={:.7f}|{:.7f}|{:.7f}|{:.1f}|{:.1f}|{:.1f},AGL={:.3f},TAS={:.3f},CAS={:.3f},Type=Air+F-16,Name={},Color={},Coalition={}\n'
         
     def start_server(self):
         """启动Tacview服务器"""
@@ -65,7 +64,11 @@ class TacviewStreamer:
             self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)  # 允许端口重用
             self.socket.bind((self.local_ip, self.local_port))
             self.socket.listen()
-            print(f"Tacview服务器启动，监听 {self.local_ip}:{self.local_port}")
+            print('\n' + '=' * 70)
+            print('【Tacview服务器启动】')
+            print(f'  监听地址: {self.local_ip}:{self.local_port}')
+            print('  等待Tacview客户端连接... (5秒超时)')
+            print('=' * 70)
             
             # 设置超时，避免无限等待
             self.socket.settimeout(5.0)
@@ -73,38 +76,58 @@ class TacviewStreamer:
             try:
                 # 等待客户端连接
                 self.client_socket, addr = self.socket.accept()
-                print(f"Tacview客户端已连接: {addr}")
+                print(f'\n✓ Tacview客户端已连接: {addr}')
                 
                 # 发送握手数据
+                print('\n【步骤1】发送握手数据...')
                 self.client_socket.send(self.handshake_data1.encode('utf-8'))
+                print(f'  > {self.handshake_data1.strip()}')
                 self.client_socket.send(self.handshake_data2.encode('utf-8'))
+                print(f'  > {self.handshake_data2.strip()}')
                 self.client_socket.send(self.handshake_data3.encode('utf-8'))
+                print(f'  > {self.handshake_data3.strip()}')
                 self.client_socket.send(b'\x00')
+                print('  > NULL字节')
                 
                 # 接收握手响应
+                print('\n【步骤2】接收握手响应...')
                 data = self.client_socket.recv(1024)
-                print(f'握手响应: {data}')
+                print(f'  < 握手响应: {data}')
                 
                 # 发送文件头和参考时间
+                print('\n【步骤3】发送ACMI文件头...')
                 self.client_socket.send(self.tel_file_header.encode('utf-8'))
+                print(f'  > {self.tel_file_header.strip()}')
+                
                 current_time = time.strftime(self.tel_reference_time_format, time.gmtime()).encode('utf-8')
                 self.client_socket.send(current_time)
+                print(f'  > {current_time.decode().strip()}')
                 
                 self.is_connected = True
-                print('Tacview服务器准备就绪，可以发送数据')
+                print('\n' + '=' * 70)
+                print('✓✓✓ Tacview初始化完成，准备发送飞机数据 ✓✓✓')
+                print('=' * 70 + '\n')
                 return True
                 
             except timeout:
-                print("等待Tacview客户端连接超时，将继续运行仿真（无Tacview显示）")
+                print('\n' + '!' * 70)
+                print('【警告】等待Tacview客户端连接超时')
+                print('  提示: 请确保Tacview已打开并连接到 127.0.0.1:58008')
+                print('  仿真将继续运行但不显示Tacview')
+                print('!' * 70 + '\n')
                 self.is_connected = False
                 return False
             
         except Exception as e:
-            print(f"启动Tacview服务器失败: {e}")
+            print('\n' + '!' * 70)
+            print(f'【错误】启动Tacview服务器失败: {e}')
+            import traceback
+            traceback.print_exc()
+            print('!' * 70 + '\n')
             return False
     
     def send_drone_data(self, drone_id, position, velocity, drone_type, timestamp):
-        """发送无人机数据到Tacview"""
+        """发送单架无人机数据到Tacview（不包含时间戳帧头）"""
         if not self.is_connected or not self.client_socket:
             return False
             
@@ -160,18 +183,77 @@ class TacviewStreamer:
             # 生成唯一ID (基于drone_id)
             object_id = 3000000 + hash(drone_id) % 100000
             
-            # 格式化数据
-            data = self.tel_data_format.format(
-                timestamp, object_id, longitude, latitude, altitude, 
-                roll, pitch, yaw, agl, tas, cas, name, color, coalition
-            )
+            # 返回格式化的数据行（不包含时间戳）
+            data = f'{object_id},T={longitude:.7f}|{latitude:.7f}|{altitude:.7f}|{roll:.1f}|{pitch:.1f}|{yaw:.1f},AGL={agl:.3f},TAS={tas:.3f},CAS={cas:.3f},Type=Air+F-16,Name={name},Color={color},Coalition={coalition}\n'
             
-            # 发送数据
-            self.client_socket.send(data.encode('utf-8'))
+            return data
+            
+        except Exception as e:
+            print(f"格式化Tacview数据失败: {e}")
+            return None
+    
+    def send_frame_data(self, timestamp, drone_data_list):
+        """批量发送一帧的所有无人机数据"""
+        if not self.is_connected or not self.client_socket:
+            return False
+            
+        try:
+            # 构建完整的帧数据
+            frame_data = f'#{timestamp:.2f}\n'
+            
+            # 添加所有无人机数据
+            for data_line in drone_data_list:
+                if data_line:  # 确保数据有效
+                    frame_data += data_line
+            
+            # 编码数据
+            encoded_data = frame_data.encode('utf-8')
+            data_size = len(encoded_data)
+            drone_count = len(drone_data_list)
+            
+            # 检查数据大小（如果超过64KB，分批发送）
+            if data_size > 65536:
+                print(f'\n【警告】帧数据过大')
+                print(f'  数据大小: {data_size} 字节')
+                print(f'  飞机数量: {drone_count} 架')
+                print(f'  将分批发送（每批50架）')
+                # 分批发送
+                batch_size = 50  # 每批最多50架飞机
+                batch_count = 0
+                for i in range(0, len(drone_data_list), batch_size):
+                    batch_data = f'#{timestamp:.2f}\n'
+                    for data_line in drone_data_list[i:i+batch_size]:
+                        if data_line:
+                            batch_data += data_line
+                    self.client_socket.send(batch_data.encode('utf-8'))
+                    batch_count += 1
+                print(f'  ✓ 发送完成，共 {batch_count} 批')
+            else:
+                # 一次性发送整帧数据
+                self.client_socket.send(encoded_data)
+                # 每10帧打印一次统计
+                if not hasattr(self, '_frame_counter'):
+                    self._frame_counter = 0
+                    self._total_sent = 0
+                
+                self._frame_counter += 1
+                self._total_sent += data_size
+                
+                if self._frame_counter % 10 == 0:
+                    avg_size = self._total_sent / self._frame_counter
+                    print(f'【Tacview发送统计】第 {self._frame_counter} 帧 | 飞机: {drone_count} | 本帧: {data_size}B | 平均: {avg_size:.0f}B')
+            
             return True
             
         except Exception as e:
-            print(f"发送Tacview数据失败: {e}")
+            print('\n' + '!' * 70)
+            print(f'【错误】发送Tacview帧数据失败')
+            print(f'  错误信息: {e}')
+            print(f'  时间戳: {timestamp}')
+            print(f'  飞机数量: {len(drone_data_list)}')
+            import traceback
+            traceback.print_exc()
+            print('!' * 70 + '\n')
             return False
     
     def send_target_area(self, target_area, timestamp):
@@ -922,6 +1004,13 @@ class DroneSimulation:
         self.status_broadcast_port = status_broadcast_port
         self.status_socket = None
         
+        # 推演控制参数
+        self.control_file_path = 'simulation_control.json'
+        self.is_paused = False
+        self.speed_multiplier = 1.0
+        self.last_control_check_time = 0
+        self.control_check_interval = 0.5  # 每0.5秒检查一次控制文件
+        
         # 初始化态势广播套接字
         if self.enable_status_broadcast:
             self._init_status_broadcast()
@@ -940,6 +1029,39 @@ class DroneSimulation:
             print("Tacview服务器启动成功，可以连接Tacview客户端到 127.0.0.1:58008")
         else:
             print("Tacview服务器启动失败")
+    
+    def _read_control_file(self):
+        """读取控制文件更新推演状态"""
+        try:
+            if not os.path.exists(self.control_file_path):
+                return
+            
+            with open(self.control_file_path, 'r', encoding='utf-8') as f:
+                control_data = json.load(f)
+            
+            old_paused = self.is_paused
+            old_speed = self.speed_multiplier
+            
+            self.is_paused = control_data.get('paused', False)
+            self.speed_multiplier = control_data.get('speed_multiplier', 1.0)
+            
+            # 检测状态变化并打印
+            if old_paused != self.is_paused:
+                if self.is_paused:
+                    print('\n' + '=' * 70)
+                    print('⏸️  【推演已暂停】')
+                    print('=' * 70 + '\n')
+                else:
+                    print('\n' + '=' * 70)
+                    print('▶️  【推演已继续】')
+                    print('=' * 70 + '\n')
+            
+            if old_speed != self.speed_multiplier and not self.is_paused:
+                print(f'\n⚡ 推演倍速已调整: {old_speed}x → {self.speed_multiplier}x\n')
+                
+        except Exception as e:
+            # 读取控制文件失败时使用默认值
+            pass
     
     def _init_status_broadcast(self):
         """初始化态势广播UDP套接字"""
@@ -1067,6 +1189,18 @@ class DroneSimulation:
         
         for step in range(steps):
             step_start_time = time.time()  # 记录单步开始时间
+            
+            # 定期检查控制文件
+            current_time = time.time()
+            if current_time - self.last_control_check_time >= self.control_check_interval:
+                self._read_control_file()
+                self.last_control_check_time = current_time
+            
+            # 如果暂停，则跳过计算和Tacview发送，只等待
+            if self.is_paused:
+                time.sleep(0.1)  # 暂停时仍然休眠，避免CPU占用
+                continue  # 跳过本帧的所有计算和发送
+            
             # Calculate group centers
             group_centers = {}
             for group in self.allocation_result['task_groups']:
@@ -1201,21 +1335,56 @@ class DroneSimulation:
                     self.drone_accelerations[drone_id] = (accel_x, accel_y)
                     self.drone_headings[drone_id] = current_heading
                     self.drone_angular_velocities[drone_id] = angular_velocity
+
+            # 批量发送Tacview数据（每帧发送一次，包含所有飞机）
+            if self.tacview_streamer and self.tacview_streamer.is_connected:
+                try:
+                    timestamp = time.time()
+                    drone_data_list = []
                     
-                    # 发送Tacview数据
-                    if self.tacview_streamer and self.tacview_streamer.is_connected:
-                        try:
-                            # 转换为Tacview坐标系 (经纬度和高度)
-                            position = (new_x, new_y, 1000 + np.random.uniform(-50, 50))  # 添加高度变化
-                            velocity = (vx * 10, vy * 10, 0)  # 适当放大速度以便在Tacview中可见
-                            timestamp = time.time()
-                            
-                            self.tacview_streamer.send_drone_data(
-                                drone_id, position, velocity, drone_type, timestamp
-                            )
-                        except Exception as e:
-                            # 忽略Tacview发送错误，继续仿真
-                            pass
+                    # 收集所有无人机的数据
+                    for drone_id, (drone_x, drone_y) in self.drone_positions.items():
+                        # 获取速度
+                        if drone_id in self.drone_velocities:
+                            vx, vy = self.drone_velocities[drone_id]
+                        else:
+                            vx, vy = 0, 0
+                        
+                        # 确定无人机类型
+                        drone_type = 'attack' if drone_id.startswith('A') else 'defense'
+                        
+                        # 转换为Tacview坐标系 (经纬度和高度)
+                        position = (drone_x, drone_y, 1000 + np.random.uniform(-50, 50))
+                        velocity = (vx * 10, vy * 10, 0)  # 适当放大速度以便在Tacview中可见
+                        
+                        # 格式化数据
+                        data_line = self.tacview_streamer.send_drone_data(
+                            drone_id, position, velocity, drone_type, timestamp
+                        )
+                        if data_line:
+                            drone_data_list.append(data_line)
+                    
+                    # 第一帧时打印数据示例
+                    if step == 0 and drone_data_list:
+                        print('\n' + '=' * 70)
+                        print('【第一帧数据示例】')
+                        print(f'  时间戳: #{timestamp:.2f}')
+                        print(f'  飞机总数: {len(drone_data_list)}')
+                        print('  前3架飞机数据:')
+                        for i, line in enumerate(drone_data_list[:3]):
+                            print(f'    [{i+1}] {line.strip()}')
+                        if len(drone_data_list) > 3:
+                            print(f'    ... 还有 {len(drone_data_list)-3} 架飞机')
+                        print('=' * 70 + '\n')
+                    
+                    # 批量发送整帧数据
+                    if drone_data_list:
+                        self.tacview_streamer.send_frame_data(timestamp, drone_data_list)
+                        
+                except Exception as e:
+                    # 忽略Tacview发送错误，继续仿真
+                    print(f'【错误】Tacview数据发送异常: {e}')
+                    pass
 
             # 每50步输出一次进度（已禁用，避免日志过多）
             # if step % 50 == 0:
@@ -1231,8 +1400,17 @@ class DroneSimulation:
             if step_elapsed > max_step_time:
                 max_step_time = step_elapsed
 
-            # 每步之间增加间隔时间，让仿真更真实
-            time.sleep(0.1)  # 每步间隔0.1秒，让Tacview能更好地显示动画
+            # 根据速度倍数调整间隔时间
+            # 基础间隔0.1秒，速度越快间隔越短
+            base_interval = 0.1
+            adjusted_interval = base_interval / self.speed_multiplier
+            
+            # 显示进度（每50帧显示一次，包含速度信息）
+            if step % 50 == 0:
+                speed_indicator = f"[{self.speed_multiplier}x]"
+                print(f"  仿真进度: {step}/{steps} 步 ({step/steps*100:.1f}%) {speed_indicator}")
+            
+            time.sleep(adjusted_interval)  # 根据倍速调整间隔
         
         # 输出最大单步运行时间
         print(f"\n单步仿真运行时间统计:")
@@ -1285,10 +1463,19 @@ class DroneSimulation:
         self.initialize_positions()
         print("开始无人机仿真...")
         
+        # 统计飞机数量
+        total_drones = len(self.drone_positions)
+        attack_drones = sum(1 for d in self.drone_positions.keys() if d.startswith('A'))
+        defense_drones = total_drones - attack_drones
+        print(f"  红方(攻击)飞机: {attack_drones} 架")
+        print(f"  蓝方(防御)飞机: {defense_drones} 架")
+        print(f"  总计: {total_drones} 架")
+        
         # 在Tacview中显示目标区域中心点
         if self.tacview_streamer and self.tacview_streamer.is_connected:
             self.tacview_streamer.send_target_area(self.target_area, 0.0)
-            print(f"目标中心已发送到Tacview: {self.target_area}")
+            print(f"  目标中心已发送到Tacview: {self.target_area}")
+            print(f"  Tacview数据流已启动，使用批量发送模式（支持大规模飞机）")
         
         self.update_positions(steps)
         metrics = self.calculate_performance_metrics()
@@ -1339,28 +1526,36 @@ def select_json_file():
 
 
 if __name__ == "__main__":
+    print('\n' + '=' * 70)
+    print('   动态场景生成平台 - 任务分配与推演系统')
+    print('=' * 70 + '\n')
+    
     # 检查命令行参数
     if len(sys.argv) > 1:
         situation_file = sys.argv[1]
-        print(f"使用指定的态势文件: {situation_file}")
+        print(f"✓ 使用指定的态势文件: {situation_file}")
     else:
         # 弹出文件选择对话框
         print("请选择态势文件（JSON或XML）...")
         situation_file = select_json_file()
         
         if not situation_file:
-            print("未选择文件，程序退出。")
+            print("【提示】未选择文件，程序退出。")
             sys.exit(0)
         
-        print(f"选择的态势文件: {situation_file}")
+        print(f"✓ 选择的态势文件: {situation_file}")
     
     # 检查文件是否存在
     import os
     if not os.path.exists(situation_file):
-        print(f"错误：找不到态势文件 {situation_file}")
+        print(f"\n【错误】找不到态势文件: {situation_file}")
         sys.exit(1)
     
     try:
+        print('\n' + '-' * 70)
+        print('【步骤1】执行任务分配...')
+        print('-' * 70)
+        
         # 执行任务分配
         allocation_result = execute_task_allocation(situation_file)
         
@@ -1368,19 +1563,36 @@ if __name__ == "__main__":
         with open('task_allocation_output.json', 'w', encoding='utf-8') as f:
             json.dump(allocation_result, f, indent=2, ensure_ascii=False)
         
-        print(f"任务分配结果已保存到 task_allocation_output.json")
+        print(f"\n✓ 任务分配完成，结果已保存到 task_allocation_output.json")
 
         # 运行仿真
-        print("开始无人机任务分配仿真...")
-        print("启用Tacview模式 - 请在Tacview中连接到 127.0.0.1:58008")
+        print('\n' + '-' * 70)
+        print('【步骤2】启动仿真推演...')
+        print('-' * 70)
+        print('\n【重要】Tacview使用说明:')
+        print('  1. 打开 Tacview 软件')
+        print('  2. 点击菜单: File -> Import Data from Real-Time Source')
+        print('  3. 输入地址: 127.0.0.1:58008')
+        print('  4. 点击 Connect')
+        print('  5. 返回本程序等待连接...\n')
         
         simulation = DroneSimulation(allocation_result)
         
         # 使用默认的仿真步数（减少步数以配合较长的间隔时间）
         simulation.run_simulation(steps=1000)
         
+        print('\n' + '=' * 70)
+        print('✓✓✓ 仿真推演完成 ✓✓✓')
+        print('=' * 70 + '\n')
+        
+    except KeyboardInterrupt:
+        print('\n\n【提示】用户中断程序')
+        sys.exit(0)
     except Exception as e:
-        print(f"执行过程中发生错误: {e}")
+        print('\n' + '!' * 70)
+        print(f'【错误】执行过程中发生错误')
+        print(f'  错误信息: {e}')
         import traceback
         traceback.print_exc()
+        print('!' * 70 + '\n')
         sys.exit(1)

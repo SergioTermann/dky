@@ -505,6 +505,31 @@ void MainWindow::on_clearLogButton_clicked()
 
 void MainWindow::on_startSimulationButton_clicked()
 {
+    // 获取应用程序当前目录
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString defaultFile = appDir + "/situation.json";
+    
+    // 弹出文件选择对话框，让用户选择态势文件
+    QString situationFilePath = QFileDialog::getOpenFileName(
+        this,
+        "选择态势文件",
+        defaultFile,  // 默认指向当前目录的 situation.json
+        "支持的文件 (*.json *.xml);;JSON文件 (*.json);;XML文件 (*.xml);;所有文件 (*.*)"
+    );
+    
+    // 如果用户取消选择，则退出
+    if (situationFilePath.isEmpty()) {
+        addLogMessage("用户取消选择态势文件", "INFO");
+        return;
+    }
+    
+    // 检查文件是否存在
+    if (!QFile::exists(situationFilePath)) {
+        QMessageBox::critical(this, "错误", QString("文件不存在：%1").arg(situationFilePath));
+        addLogMessage(QString("文件不存在：%1").arg(situationFilePath), "ERROR");
+        return;
+    }
+    
     // 启用推演控制按钮并初始化控制文件
     enableSimulationControls(true);
     updateSimulationControlFile();
@@ -514,26 +539,38 @@ void MainWindow::on_startSimulationButton_clicked()
 
     // 调用Python文件
     QProcess *process = new QProcess(this);
-    QString appDir = QCoreApplication::applicationDirPath();
     
-    // 使用统一的项目根目录常量
-    QString pythonScriptPath = PROJECT_ROOT_DIR + "task_allocation.py";
+    // 优先使用当前目录的 Python 脚本，如果不存在则使用项目根目录的
+    QString pythonScriptPath = appDir + "/task_allocation.py";
+    QString workingDir = appDir;
     
     if (!QFile::exists(pythonScriptPath)) {
-        QMessageBox::critical(this, "错误", QString("找不到Python脚本：%1").arg(pythonScriptPath));
-        addLogMessage(QString("找不到Python脚本：%1").arg(pythonScriptPath), "ERROR");
-        enableSimulationControls(false);
-        return;
+        // 尝试使用项目根目录的脚本
+        pythonScriptPath = PROJECT_ROOT_DIR + "task_allocation.py";
+        workingDir = PROJECT_ROOT_DIR;
+        
+        if (!QFile::exists(pythonScriptPath)) {
+            QMessageBox::critical(this, "错误", 
+                QString("找不到Python脚本\n在以下位置均未找到:\n1. %1\n2. %2")
+                .arg(appDir + "/task_allocation.py")
+                .arg(PROJECT_ROOT_DIR + "task_allocation.py"));
+            addLogMessage("找不到Python脚本文件", "ERROR");
+            enableSimulationControls(false);
+            return;
+        }
     }
     
-    // 设置工作目录为源码目录
-    process->setWorkingDirectory(PROJECT_ROOT_DIR);
+    // 设置工作目录
+    process->setWorkingDirectory(workingDir);
     process->setProcessChannelMode(QProcess::MergedChannels);
     process->setProgram("python");
-    process->setArguments(QStringList() << pythonScriptPath);
+    // 传递态势文件路径和控制文件路径作为参数
+    process->setArguments(QStringList() << pythonScriptPath << situationFilePath << controlFilePath);
     
     addLogMessage(QString("执行Python脚本：%1").arg(pythonScriptPath), "INFO");
-    addLogMessage(QString("工作目录：%1").arg(PROJECT_ROOT_DIR), "INFO");
+    addLogMessage(QString("态势文件：%1").arg(situationFilePath), "INFO");
+    addLogMessage(QString("控制文件：%1").arg(controlFilePath), "INFO");
+    addLogMessage(QString("工作目录：%1").arg(workingDir), "INFO");
     
     // 连接输出信号
     connect(process, &QProcess::readyReadStandardOutput,
@@ -921,28 +958,39 @@ void MainWindow::on_pauseResumeButton_clicked()
 
 void MainWindow::on_blueModeComboBox_currentIndexChanged(int index)
 {
-    QString modeText;
+    QString blueModeText;
+    QString redModeText;
+    int redModeIndex;
+    
     switch (index) {
-        case 0: // 攻击
-            modeText = "攻击";
+        case 0: // 蓝方攻击
+            blueModeText = "攻击";
+            redModeText = "防御";
+            redModeIndex = 1;  // 红方自动变为防御
             break;
-        case 1: // 防御
-            modeText = "防御";
+        case 1: // 蓝方防御
+            blueModeText = "防御";
+            redModeText = "攻击";
+            redModeIndex = 0;  // 红方自动变为攻击
             break;
-        case 2: // 对抗
-            modeText = "对抗";
+        case 2: // 蓝方对抗
+            blueModeText = "对抗";
+            redModeText = "对抗";
+            redModeIndex = 2;  // 红方也是对抗
             break;
         default:
-            modeText = "未知";
+            blueModeText = "未知";
+            redModeText = "未知";
+            redModeIndex = index;
     }
     
-    // 同步更新红方任务模式（阻断信号避免循环触发）
+    // 自动同步红方任务模式（对称设置，阻断信号避免循环触发）
     ui->redModeComboBox->blockSignals(true);
-    ui->redModeComboBox->setCurrentIndex(index);
+    ui->redModeComboBox->setCurrentIndex(redModeIndex);
     ui->redModeComboBox->blockSignals(false);
     
     // 记录模式变更
-    addLogMessage(QString("任务模式已切换为: %1 ").arg(modeText), "INFO");
+    addLogMessage(QString("任务模式已切换: 蓝方-%1 | 红方-%2").arg(blueModeText, redModeText), "INFO");
     
     // 更新控制文件（不显示重复日志）
     updateSimulationControlFile(false);
@@ -950,28 +998,39 @@ void MainWindow::on_blueModeComboBox_currentIndexChanged(int index)
 
 void MainWindow::on_redModeComboBox_currentIndexChanged(int index)
 {
-    QString modeText;
+    QString redModeText;
+    QString blueModeText;
+    int blueModeIndex;
+    
     switch (index) {
-        case 0: // 攻击
-            modeText = "攻击";
+        case 0: // 红方攻击
+            redModeText = "攻击";
+            blueModeText = "防御";
+            blueModeIndex = 1;  // 蓝方自动变为防御
             break;
-        case 1: // 防御
-            modeText = "防御";
+        case 1: // 红方防御
+            redModeText = "防御";
+            blueModeText = "攻击";
+            blueModeIndex = 0;  // 蓝方自动变为攻击
             break;
-        case 2: // 对抗
-            modeText = "对抗";
+        case 2: // 红方对抗
+            redModeText = "对抗";
+            blueModeText = "对抗";
+            blueModeIndex = 2;  // 蓝方也是对抗
             break;
         default:
-            modeText = "未知";
+            redModeText = "未知";
+            blueModeText = "未知";
+            blueModeIndex = index;
     }
     
-    // 同步更新蓝方任务模式（阻断信号避免循环触发）
+    // 自动同步蓝方任务模式（对称设置，阻断信号避免循环触发）
     ui->blueModeComboBox->blockSignals(true);
-    ui->blueModeComboBox->setCurrentIndex(index);
+    ui->blueModeComboBox->setCurrentIndex(blueModeIndex);
     ui->blueModeComboBox->blockSignals(false);
     
     // 记录模式变更
-    addLogMessage(QString("任务模式已切换为: %1").arg(modeText), "INFO");
+    addLogMessage(QString("任务模式已切换: 红方-%1 | 蓝方-%2").arg(redModeText, blueModeText), "INFO");
     
     // 更新控制文件（不显示重复日志）
     updateSimulationControlFile(false);
@@ -986,8 +1045,14 @@ void MainWindow::on_speedComboBox_currentIndexChanged(int index)
         case 1: // 1x
             speedMultiplier = 1.0;
             break;
-        case 2: // 1.5x
-            speedMultiplier = 1.5;
+        case 2: // 2x
+            speedMultiplier = 2.0;
+            break;
+        case 3: // 5x
+            speedMultiplier = 5.0;
+            break;
+        case 4: // 10x
+            speedMultiplier = 10.0;
             break;
         default:
             speedMultiplier = 1.0;

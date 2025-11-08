@@ -13,6 +13,7 @@
 #include <QLabel>
 #include <QTimer>
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <QTextStream>
 #include <QScrollBar>
 #include <QProcess>

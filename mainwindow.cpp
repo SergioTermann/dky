@@ -181,6 +181,10 @@ void MainWindow::on_generateButton_clicked()
         return;
     }
 
+    // 记录开始时间（从文件对话框返回后开始计时）
+    QElapsedTimer timer;
+    timer.start();
+
     // 获取用户设置的参数
     int userBlueCount = ui->blueAircraftCountSpinBox->value();
     QString userStrategy = ui->strategyComboBox->currentText();
@@ -261,17 +265,35 @@ void MainWindow::on_generateButton_clicked()
         addLogMessage(QString("态势文件保存失败：%1").arg(fileName), "ERROR");
         return;
     }
-
+    
+    // 记录结束时间并计算耗时
+    qint64 elapsedMs = timer.elapsed();  // 计算毫秒数
+    double elapsedSeconds = elapsedMs / 1000.0;   // 转换为秒
+    
+    // 格式化耗时显示
+    QString elapsedStr;
+    if (elapsedSeconds < 1.0) {
+        elapsedStr = QString("%1 毫秒").arg(elapsedMs);
+    } else if (elapsedSeconds < 60.0) {
+        elapsedStr = QString("%1 秒").arg(elapsedSeconds, 0, 'f', 3);
+    } else {
+        int minutes = static_cast<int>(elapsedSeconds / 60);
+        double seconds = elapsedSeconds - minutes * 60;
+        elapsedStr = QString("%1 分 %2 秒").arg(minutes).arg(seconds, 0, 'f', 3);
+    }
+    
+    addLogMessage(QString("生成态势文件耗时：%1").arg(elapsedStr), "INFO");
     addLogMessage(QString("成功生成%1架蓝方飞机，难度：%2，已保存到文件：%3")
                       .arg(result.blueAircraftList.size())
                       .arg(finalStrategy)
                       .arg(fileName), "SUCCESS");
 
     QMessageBox::information(this, "成功",
-                             QString("已生成%1架蓝方飞机，难度：%2\n态势文件已保存到：%3")
+                             QString("已生成%1架蓝方飞机，难度：%2\n态势文件已保存到：%3\n耗时：%4")
                                  .arg(result.blueAircraftList.size())
                                  .arg(finalStrategy)
-                                 .arg(fileName));
+                                 .arg(fileName)
+                                 .arg(elapsedStr));
 }
 
 void MainWindow::on_actionLoadRed_triggered()

@@ -564,11 +564,12 @@ void MainWindow::on_startSimulationButton_clicked()
     process->setWorkingDirectory(workingDir);
     process->setProcessChannelMode(QProcess::MergedChannels);
     process->setProgram("python");
-    // 传递态势文件路径作为参数
-    process->setArguments(QStringList() << pythonScriptPath << situationFilePath);
+    // 传递态势文件路径和控制文件路径作为参数
+    process->setArguments(QStringList() << pythonScriptPath << situationFilePath << controlFilePath);
     
     addLogMessage(QString("执行Python脚本：%1").arg(pythonScriptPath), "INFO");
     addLogMessage(QString("态势文件：%1").arg(situationFilePath), "INFO");
+    addLogMessage(QString("控制文件：%1").arg(controlFilePath), "INFO");
     addLogMessage(QString("工作目录：%1").arg(workingDir), "INFO");
     
     // 连接输出信号

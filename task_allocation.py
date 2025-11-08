@@ -1186,8 +1186,10 @@ class DroneSimulation:
         """Simulate smooth movement of drones with realistic flight dynamics"""
         dt = 0.1  # 时间步长 (秒)
         max_step_time = 0  # 记录最大单步运行时间
+        actual_step = 0  # 实际执行的步数（不包含暂停时的步数）
         
-        for step in range(steps):
+        step = 0
+        while step < steps:
             step_start_time = time.time()  # 记录单步开始时间
             
             # 定期检查控制文件
@@ -1199,7 +1201,11 @@ class DroneSimulation:
             # 如果暂停，则跳过计算和Tacview发送，只等待
             if self.is_paused:
                 time.sleep(0.1)  # 暂停时仍然休眠，避免CPU占用
-                continue  # 跳过本帧的所有计算和发送
+                continue  # 跳过本帧的所有计算和发送（不增加step）
+            
+            # 推演未暂停，增加实际步数
+            actual_step += 1
+            step += 1
             
             # Calculate group centers
             group_centers = {}
@@ -1365,7 +1371,7 @@ class DroneSimulation:
                             drone_data_list.append(data_line)
                     
                     # 第一帧时打印数据示例
-                    if step == 0 and drone_data_list:
+                    if actual_step == 1 and drone_data_list:
                         print('\n' + '=' * 70)
                         print('【第一帧数据示例】')
                         print(f'  时间戳: #{timestamp:.2f}')
@@ -1406,15 +1412,20 @@ class DroneSimulation:
             adjusted_interval = base_interval / self.speed_multiplier
             
             # 显示进度（每50帧显示一次，包含速度信息）
-            if step % 50 == 0:
+            if actual_step % 50 == 0:
                 speed_indicator = f"[{self.speed_multiplier}x]"
-                print(f"  仿真进度: {step}/{steps} 步 ({step/steps*100:.1f}%) {speed_indicator}")
+                progress_pct = (actual_step / steps * 100) if steps > 0 else 0
+                print(f"  仿真进度: {actual_step}/{steps} 步 ({progress_pct:.1f}%) {speed_indicator}")
             
             time.sleep(adjusted_interval)  # 根据倍速调整间隔
         
-        # 输出最大单步运行时间
-        print(f"\n单步仿真运行时间统计:")
+        # 输出仿真统计
+        print(f"\n推演统计:")
+        print(f"  目标步数: {steps}")
+        print(f"  实际执行步数: {actual_step}")
         print(f"  最大单步时间: {max_step_time*1000:.2f} 毫秒 ({max_step_time:.4f} 秒)")
+        if actual_step < steps:
+            print(f"  提示: 由于暂停，未完成所有步数")
 
     def calculate_performance_metrics(self):
         """Calculate performance metrics for the allocation"""
@@ -1459,7 +1470,7 @@ class DroneSimulation:
         return metrics
 
     def run_simulation(self, steps=100):
-        """Run the full simulation"""
+        """Run the full simulation with pause/resume support"""
         self.initialize_positions()
         print("开始无人机仿真...")
         
@@ -1471,11 +1482,17 @@ class DroneSimulation:
         print(f"  蓝方(防御)飞机: {defense_drones} 架")
         print(f"  总计: {total_drones} 架")
         
+        # 读取初始控制状态
+        self._read_control_file()
+        print(f"  初始状态: {'暂停' if self.is_paused else '运行'} | 倍速: {self.speed_multiplier}x")
+        
         # 在Tacview中显示目标区域中心点
         if self.tacview_streamer and self.tacview_streamer.is_connected:
             self.tacview_streamer.send_target_area(self.target_area, 0.0)
             print(f"  目标中心已发送到Tacview: {self.target_area}")
             print(f"  Tacview数据流已启动，使用批量发送模式（支持大规模飞机）")
+        
+        print(f"\n提示: 可通过界面的暂停/继续按钮和倍速选择器实时控制推演\n")
         
         self.update_positions(steps)
         metrics = self.calculate_performance_metrics()
@@ -1531,9 +1548,17 @@ if __name__ == "__main__":
     print('=' * 70 + '\n')
     
     # 检查命令行参数
+    situation_file = None
+    control_file = 'simulation_control.json'  # 默认控制文件路径
+    
     if len(sys.argv) > 1:
         situation_file = sys.argv[1]
         print(f"✓ 使用指定的态势文件: {situation_file}")
+        
+        # 如果提供了第二个参数，作为控制文件路径
+        if len(sys.argv) > 2:
+            control_file = sys.argv[2]
+            print(f"✓ 使用指定的控制文件: {control_file}")
     else:
         # 弹出文件选择对话框
         print("请选择态势文件（JSON或XML）...")
@@ -1576,7 +1601,7 @@ if __name__ == "__main__":
         print('  4. 点击 Connect')
         print('  5. 返回本程序等待连接...\n')
         
-        simulation = DroneSimulation(allocation_result)
+        simulation = DroneSimulation(allocation_result, control_file_path=control_file)
         
         # 使用默认的仿真步数（减少步数以配合较长的间隔时间）
         simulation.run_simulation(steps=1000)

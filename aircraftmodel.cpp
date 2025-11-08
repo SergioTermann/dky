@@ -1,5 +1,9 @@
 #include "aircraftmodel.h"
 #include <QColor>
+#include <QMessageBox>
+#include <QDoubleValidator>
+#include <QLocale>
+#include <QRegExp>
 
 AircraftModel::AircraftModel(QObject *parent)
     : QAbstractTableModel(parent)
@@ -59,15 +63,188 @@ bool AircraftModel::setData(const QModelIndex &index, const QVariant &value, int
     Aircraft &aircraft = m_aircraftList[index.row()];
 
     switch (index.column()) {
-    case ID: aircraft.id = value.toInt(); break;
-    case TYPE: aircraft.type = value.toString(); break;
-    case LONGITUDE: aircraft.longitude = value.toDouble(); break;
-    case LATITUDE: aircraft.latitude = value.toDouble(); break;
-    case ALTITUDE: aircraft.altitude = value.toDouble(); break;
-    case SPEED: aircraft.speed = value.toDouble(); break;
-    case HEADING: aircraft.heading = value.toDouble(); break;
-    case STATUS: aircraft.status = value.toString(); break;
-    default: return false;
+    case ID: 
+        aircraft.id = value.toInt(); 
+        break;
+    case TYPE: 
+        aircraft.type = value.toString(); 
+        break;
+    case LONGITUDE: {
+        // 验证经度输入
+        QString strValue = value.toString().trimmed();
+        
+        // 检查是否为空
+        if (strValue.isEmpty()) {
+            QMessageBox::warning(nullptr, "输入错误", "经度不能为空！\n请输入有效的经度值（-180 到 180）");
+            return false;
+        }
+        
+        // 检查是否包含非数字字符（允许负号、小数点）
+        QRegExp regex("^-?\\d+(\\.\\d+)?$");
+        if (!regex.exactMatch(strValue)) {
+            QMessageBox::warning(nullptr, "输入错误", 
+                QString("经度只能输入数字！\n您输入的值：%1\n请输入有效的经度值（-180 到 180）").arg(strValue));
+            return false;
+        }
+        
+        // 转换为double并验证范围
+        bool ok;
+        double longitude = strValue.toDouble(&ok);
+        if (!ok) {
+            QMessageBox::warning(nullptr, "输入错误", 
+                QString("经度格式错误！\n您输入的值：%1\n请输入有效的经度值（-180 到 180）").arg(strValue));
+            return false;
+        }
+        
+        // 验证经度范围：-180 到 180
+        if (longitude < -180.0 || longitude > 180.0) {
+            QMessageBox::warning(nullptr, "范围错误", 
+                QString("经度超出有效范围！\n您输入的值：%1\n有效范围：-180 到 180").arg(longitude));
+            return false;
+        }
+        
+        aircraft.longitude = longitude;
+        break;
+    }
+    case LATITUDE: {
+        // 验证纬度输入
+        QString strValue = value.toString().trimmed();
+        
+        // 检查是否为空
+        if (strValue.isEmpty()) {
+            QMessageBox::warning(nullptr, "输入错误", "纬度不能为空！\n请输入有效的纬度值（-90 到 90）");
+            return false;
+        }
+        
+        // 检查是否包含非数字字符（允许负号、小数点）
+        QRegExp regex("^-?\\d+(\\.\\d+)?$");
+        if (!regex.exactMatch(strValue)) {
+            QMessageBox::warning(nullptr, "输入错误", 
+                QString("纬度只能输入数字！\n您输入的值：%1\n请输入有效的纬度值（-90 到 90）").arg(strValue));
+            return false;
+        }
+        
+        // 转换为double并验证范围
+        bool ok;
+        double latitude = strValue.toDouble(&ok);
+        if (!ok) {
+            QMessageBox::warning(nullptr, "输入错误", 
+                QString("纬度格式错误！\n您输入的值：%1\n请输入有效的纬度值（-90 到 90）").arg(strValue));
+            return false;
+        }
+        
+        // 验证纬度范围：-90 到 90
+        if (latitude < -90.0 || latitude > 90.0) {
+            QMessageBox::warning(nullptr, "范围错误", 
+                QString("纬度超出有效范围！\n您输入的值：%1\n有效范围：-90 到 90").arg(latitude));
+            return false;
+        }
+        
+        aircraft.latitude = latitude;
+        break;
+    }
+    case ALTITUDE: {
+        // 验证高度输入
+        QString strValue = value.toString().trimmed();
+        
+        // 检查是否为空
+        if (strValue.isEmpty()) {
+            QMessageBox::warning(nullptr, "输入错误", "高度不能为空！\n请输入有效的数字");
+            return false;
+        }
+        
+        // 检查是否包含非数字字符（允许小数点，不允许负号）
+        QRegExp regex("^\\d+(\\.\\d+)?$");
+        if (!regex.exactMatch(strValue)) {
+            QMessageBox::warning(nullptr, "输入错误", 
+                QString("高度只能输入数字（不能为负数）！\n您输入的值：%1\n请输入有效的数字").arg(strValue));
+            return false;
+        }
+        
+        // 转换为double并验证
+        bool ok;
+        double altitude = strValue.toDouble(&ok);
+        if (!ok) {
+            QMessageBox::warning(nullptr, "输入错误", 
+                QString("高度格式错误！\n您输入的值：%1\n请输入有效的数字").arg(strValue));
+            return false;
+        }
+        
+        aircraft.altitude = altitude;
+        break;
+    }
+    case SPEED: {
+        // 验证速度输入
+        QString strValue = value.toString().trimmed();
+        
+        // 检查是否为空
+        if (strValue.isEmpty()) {
+            QMessageBox::warning(nullptr, "输入错误", "速度不能为空！\n请输入有效的数字");
+            return false;
+        }
+        
+        // 检查是否包含非数字字符（允许小数点，不允许负号）
+        QRegExp regex("^\\d+(\\.\\d+)?$");
+        if (!regex.exactMatch(strValue)) {
+            QMessageBox::warning(nullptr, "输入错误", 
+                QString("速度只能输入数字（不能为负数）！\n您输入的值：%1\n请输入有效的数字").arg(strValue));
+            return false;
+        }
+        
+        // 转换为double并验证
+        bool ok;
+        double speed = strValue.toDouble(&ok);
+        if (!ok) {
+            QMessageBox::warning(nullptr, "输入错误", 
+                QString("速度格式错误！\n您输入的值：%1\n请输入有效的数字").arg(strValue));
+            return false;
+        }
+        
+        aircraft.speed = speed;
+        break;
+    }
+    case HEADING: {
+        // 验证航向输入
+        QString strValue = value.toString().trimmed();
+        
+        // 检查是否为空
+        if (strValue.isEmpty()) {
+            QMessageBox::warning(nullptr, "输入错误", "航向不能为空！\n请输入有效的航向值（0 到 360）");
+            return false;
+        }
+        
+        // 检查是否包含非数字字符（允许小数点，航向不能为负数）
+        QRegExp regex("^\\d+(\\.\\d+)?$");
+        if (!regex.exactMatch(strValue)) {
+            QMessageBox::warning(nullptr, "输入错误", 
+                QString("航向只能输入数字！\n您输入的值：%1\n请输入有效的航向值（0 到 360）").arg(strValue));
+            return false;
+        }
+        
+        // 转换为double并验证范围
+        bool ok;
+        double heading = strValue.toDouble(&ok);
+        if (!ok) {
+            QMessageBox::warning(nullptr, "输入错误", 
+                QString("航向格式错误！\n您输入的值：%1\n请输入有效的航向值（0 到 360）").arg(strValue));
+            return false;
+        }
+        
+        // 验证航向范围：0 到 360
+        if (heading < 0.0 || heading > 360.0) {
+            QMessageBox::warning(nullptr, "范围错误", 
+                QString("航向超出有效范围！\n您输入的值：%1\n有效范围：0 到 360").arg(heading));
+            return false;
+        }
+        
+        aircraft.heading = heading;
+        break;
+    }
+    case STATUS: 
+        aircraft.status = value.toString(); 
+        break;
+    default: 
+        return false;
     }
 
     emit dataChanged(index, index);

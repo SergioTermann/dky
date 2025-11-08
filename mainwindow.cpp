@@ -180,6 +180,10 @@ void MainWindow::on_generateButton_clicked()
         return;
     }
 
+    // 记录开始时间（从文件对话框返回后开始计时）
+    QElapsedTimer timer;
+    timer.start();
+
     // 获取用户设置的参数
     int userBlueCount = ui->blueAircraftCountSpinBox->value();
     QString userStrategy = ui->strategyComboBox->currentText();
@@ -260,17 +264,35 @@ void MainWindow::on_generateButton_clicked()
         addLogMessage(QString("态势文件保存失败：%1").arg(fileName), "ERROR");
         return;
     }
-
+    
+    // 记录结束时间并计算耗时
+    qint64 elapsedMs = timer.elapsed();  // 计算毫秒数
+    double elapsedSeconds = elapsedMs / 1000.0;   // 转换为秒
+    
+    // 格式化耗时显示
+    QString elapsedStr;
+    if (elapsedSeconds < 1.0) {
+        elapsedStr = QString("%1 毫秒").arg(elapsedMs);
+    } else if (elapsedSeconds < 60.0) {
+        elapsedStr = QString("%1 秒").arg(elapsedSeconds, 0, 'f', 3);
+    } else {
+        int minutes = static_cast<int>(elapsedSeconds / 60);
+        double seconds = elapsedSeconds - minutes * 60;
+        elapsedStr = QString("%1 分 %2 秒").arg(minutes).arg(seconds, 0, 'f', 3);
+    }
+    
+    addLogMessage(QString("生成态势文件耗时：%1").arg(elapsedStr), "INFO");
     addLogMessage(QString("成功生成%1架蓝方飞机，难度：%2，已保存到文件：%3")
                       .arg(result.blueAircraftList.size())
                       .arg(finalStrategy)
                       .arg(fileName), "SUCCESS");
 
     QMessageBox::information(this, "成功",
-                             QString("已生成%1架蓝方飞机，难度：%2\n态势文件已保存到：%3")
+                             QString("已生成%1架蓝方飞机，难度：%2\n态势文件已保存到：%3\n耗时：%4")
                                  .arg(result.blueAircraftList.size())
                                  .arg(finalStrategy)
-                                 .arg(fileName));
+                                 .arg(fileName)
+                                 .arg(elapsedStr));
 }
 
 void MainWindow::on_actionLoadRed_triggered()
@@ -346,21 +368,25 @@ void MainWindow::on_actionLoadRed_triggered()
     // 加载任务模式（如果存在）
     if (params.contains("task_mode")) {
         QString taskMode = params["task_mode"].toString();
-        int modeIndex = 0; // 默认为攻击模式
+        int redModeIndex = 0; // 默认为攻击模式
+        int blueModeIndex = 1; // 蓝方默认为防御模式（与红方相反）
         
         if (taskMode == "attack") {
-            modeIndex = 0;
+            redModeIndex = 0;  // 红方：攻击
+            blueModeIndex = 1; // 蓝方：防御（相反）
         } else if (taskMode == "defense") {
-            modeIndex = 1;
+            redModeIndex = 1; // 红方：防御
+            blueModeIndex = 0; // 蓝方：攻击（相反）
         } else if (taskMode == "confrontation") {
-            modeIndex = 2;
+            redModeIndex = 2; // 红方：对抗
+            blueModeIndex = 2; // 蓝方：对抗（对抗模式保持相同）
         }
         
         // 设置任务模式（阻断信号避免触发不必要的日志）
         ui->redModeComboBox->blockSignals(true);
         ui->blueModeComboBox->blockSignals(true);
-        ui->redModeComboBox->setCurrentIndex(modeIndex);
-        ui->blueModeComboBox->setCurrentIndex(modeIndex);
+        ui->redModeComboBox->setCurrentIndex(redModeIndex);
+        ui->blueModeComboBox->setCurrentIndex(blueModeIndex);
         ui->redModeComboBox->blockSignals(false);
         ui->blueModeComboBox->blockSignals(false);
         

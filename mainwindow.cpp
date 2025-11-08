@@ -347,21 +347,25 @@ void MainWindow::on_actionLoadRed_triggered()
     // 加载任务模式（如果存在）
     if (params.contains("task_mode")) {
         QString taskMode = params["task_mode"].toString();
-        int modeIndex = 0; // 默认为攻击模式
+        int redModeIndex = 0; // 默认为攻击模式
+        int blueModeIndex = 1; // 蓝方默认为防御模式（与红方相反）
         
         if (taskMode == "attack") {
-            modeIndex = 0;
+            redModeIndex = 0;  // 红方：攻击
+            blueModeIndex = 1; // 蓝方：防御（相反）
         } else if (taskMode == "defense") {
-            modeIndex = 1;
+            redModeIndex = 1; // 红方：防御
+            blueModeIndex = 0; // 蓝方：攻击（相反）
         } else if (taskMode == "confrontation") {
-            modeIndex = 2;
+            redModeIndex = 2; // 红方：对抗
+            blueModeIndex = 2; // 蓝方：对抗（对抗模式保持相同）
         }
         
         // 设置任务模式（阻断信号避免触发不必要的日志）
         ui->redModeComboBox->blockSignals(true);
         ui->blueModeComboBox->blockSignals(true);
-        ui->redModeComboBox->setCurrentIndex(modeIndex);
-        ui->blueModeComboBox->setCurrentIndex(modeIndex);
+        ui->redModeComboBox->setCurrentIndex(redModeIndex);
+        ui->blueModeComboBox->setCurrentIndex(blueModeIndex);
         ui->redModeComboBox->blockSignals(false);
         ui->blueModeComboBox->blockSignals(false);
         

@@ -530,36 +530,12 @@ void MainWindow::on_clearLogButton_clicked()
 
 void MainWindow::on_startSimulationButton_clicked()
 {
-    // 使用项目源码目录作为默认路径
-    QString defaultFile = PROJECT_ROOT_DIR + "situation.json";
-    
-    // 弹出文件选择对话框，让用户选择态势文件
-    QString situationFilePath = QFileDialog::getOpenFileName(
-        this,
-        "选择态势文件",
-        defaultFile,  // 默认指向项目源码目录的 situation.json
-        "支持的文件 (*.json *.xml);;JSON文件 (*.json);;XML文件 (*.xml);;所有文件 (*.*)"
-    );
-    
-    // 如果用户取消选择，则退出
-    if (situationFilePath.isEmpty()) {
-        addLogMessage("用户取消选择态势文件", "INFO");
-        return;
-    }
-    
-    // 检查文件是否存在
-    if (!QFile::exists(situationFilePath)) {
-        QMessageBox::critical(this, "错误", QString("文件不存在：%1").arg(situationFilePath));
-        addLogMessage(QString("文件不存在：%1").arg(situationFilePath), "ERROR");
-        return;
-    }
-    
     // 启用推演控制按钮并初始化控制文件
     enableSimulationControls(true);
     updateSimulationControlFile();
     
-    // 直接调用 task_allocation.py
-    addLogMessage("开始调用 task_allocation.py 进行任务分配推演", "INFO");
+    // 直接运行 task_allocation.py
+    addLogMessage("启动 Python 推演程序", "INFO");
 
     // 使用项目源码目录的 Python 脚本
     QString pythonScriptPath = PROJECT_ROOT_DIR + "task_allocation.py";
@@ -572,113 +548,31 @@ void MainWindow::on_startSimulationButton_clicked()
         return;
     }
     
-    // 工作目录设置为项目源码目录（所有文件都在这里）
+    // 工作目录设置为项目源码目录
     QString workDir = QString(PROJECT_ROOT_DIR).replace("\\", "/");
     if (workDir.endsWith("/")) {
         workDir.chop(1);  // 去掉末尾的斜杠
     }
     
-    // 最简单可靠的方法：创建临时批处理文件并运行
-    QString batFilePath = workDir + "/run_simulation_temp.bat";
+    // 直接运行 task_allocation.py
+    // 使用 start 命令在新窗口中运行，这样可以正确激活conda环境
+    QString command = QString("start \"Python Simulation\" /D \"%1\" cmd /K \"conda activate ppoa && python -u \"%2\"\"")
+                      .arg(workDir)
+                      .arg(pythonScriptPath);
     
-    // 创建批处理文件内容 - 设置 Anaconda Prompt 样式的标题
-    QString batContent = QString(
-        "@echo off\n"
-        "REM Set UTF-8 encoding\n"
-        "set PYTHONIOENCODING=utf-8\n"
-        "chcp 65001 >nul 2>&1\n"
-        "\n"
-        "REM Set window title\n"
-        "title Python Simulation (ppoa)\n"
-        "\n"
-        "REM Change to working directory\n"
-        "cd /d \"%1\"\n"
-        "\n"
-        "echo.\n"
-        "echo ========================================\n"
-        "echo   Activating conda environment: ppoa\n"
-        "echo ========================================\n"
-        "echo.\n"
-        "\n"
-        "REM Activate ppoa environment\n"
-        "call conda activate ppoa\n"
-        "\n"
-        "if errorlevel 1 (\n"
-        "    echo.\n"
-        "    echo [ERROR] Failed to activate ppoa environment\n"
-        "    echo Please make sure conda is in your PATH\n"
-        "    echo.\n"
-        "    pause\n"
-        "    exit /b 1\n"
-        ")\n"
-        "\n"
-        "echo.\n"
-        "echo ========================================\n"
-        "echo   Environment: ppoa (activated)\n"
-        "echo   Working Dir: %CD%\n"
-        "echo ========================================\n"
-        "echo.\n"
-        "echo Running Python script...\n"
-        "echo.\n"
-        "\n"
-        "REM Run Python script\n"
-        "python -u \"%2\" \"%3\" \"%4\"\n"
-        "\n"
-        "echo.\n"
-        "echo ========================================\n"
-        "echo   Simulation Complete!\n"
-        "echo ========================================\n"
-        "echo.\n"
-        "echo Type 'exit' to close this window\n"
-        "echo.\n"
-    ).arg(workDir)
-     .arg(pythonScriptPath)
-     .arg(situationFilePath)
-     .arg(controlFilePath);
-    
-    // 写入批处理文件
-    QFile batFile(batFilePath);
-    if (batFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QTextStream out(&batFile);
-        out.setCodec("GBK");  // Windows批处理文件使用GBK编码
-        out << batContent;
-        batFile.close();
-        
-        addLogMessage(QString("创建临时批处理文件：%1").arg(batFilePath), "INFO");
-    } else {
-        addLogMessage("无法创建临时批处理文件", "ERROR");
-        QMessageBox::critical(this, "错误", "无法创建临时批处理文件");
-        enableSimulationControls(false);
-        return;
-    }
-    
-    addLogMessage("将在新窗口中运行Python脚本", "INFO");
     addLogMessage(QString("执行Python脚本：%1").arg(pythonScriptPath), "INFO");
-    addLogMessage(QString("态势文件：%1").arg(situationFilePath), "INFO");
-    addLogMessage(QString("控制文件：%1").arg(controlFilePath), "INFO");
     addLogMessage(QString("工作目录：%1").arg(workDir), "INFO");
-    addLogMessage("【提示】Python输出将显示在独立的命令行窗口中", "SUCCESS");
     
-    // 使用 start 命令打开新的 CMD 窗口
-    // start 命令格式: start "窗口标题" /D "工作目录" cmd /K "批处理文件"
-    QString startCmd = QString("start \"Python Simulation\" /D \"%1\" cmd /K \"%2\"")
-                        .arg(workDir)
-                        .arg(batFilePath);
-    
-    addLogMessage(QString("执行命令: %1").arg(startCmd), "INFO");
-    
-    // 使用 system() 执行 start 命令（这是 Windows 最可靠的方式）
-    int result = system(startCmd.toLocal8Bit().constData());
+    // 使用 system() 执行 start 命令（Windows 最可靠的方式）
+    int result = system(command.toLocal8Bit().constData());
     
     if (result == 0) {
-        addLogMessage("✓ CMD窗口已启动，正在激活conda环境", "SUCCESS");
-        addLogMessage("【提示】请查看新打开的命令行窗口，将自动激活ppoa环境", "INFO");
-        addLogMessage("【提示】推演控制（暂停/倍速）功能仍然有效", "INFO");
+        addLogMessage("✓ Python脚本已在新窗口中启动", "SUCCESS");
     } else {
         addLogMessage(QString("启动失败 (返回码: %1)").arg(result), "ERROR");
-        addLogMessage(QString("请手动双击运行：%1").arg(batFilePath), "INFO");
-        QMessageBox::information(this, "提示", 
-            QString("自动启动失败，请手动双击运行：\n%1").arg(batFilePath));
+        QMessageBox::critical(this, "错误", "无法启动Python脚本");
+        enableSimulationControls(false);
+        return;
     }
 }
 

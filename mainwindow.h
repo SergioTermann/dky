@@ -26,7 +26,7 @@
 #include "situationgenerator.h"
 
 // 项目根目录常量定义
-const QString PROJECT_ROOT_DIR = "D:/DKY2/dky/dky/";
+const QString PROJECT_ROOT_DIR = "C:/Users/kevin/Desktop/dky/";
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }

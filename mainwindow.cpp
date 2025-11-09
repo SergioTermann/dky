@@ -561,9 +561,6 @@ void MainWindow::on_startSimulationButton_clicked()
     // 直接调用 task_allocation.py
     addLogMessage("开始调用 task_allocation.py 进行任务分配推演", "INFO");
 
-    // 调用Python文件
-    QProcess *process = new QProcess(this);
-    
     // 使用项目源码目录的 Python 脚本
     QString pythonScriptPath = PROJECT_ROOT_DIR + "task_allocation.py";
     
@@ -581,75 +578,108 @@ void MainWindow::on_startSimulationButton_clicked()
         workDir.chop(1);  // 去掉末尾的斜杠
     }
     
-    process->setWorkingDirectory(workDir);
-    process->setProcessChannelMode(QProcess::MergedChannels);
-    process->setProgram("python");
+    // 最简单可靠的方法：创建临时批处理文件并运行
+    QString batFilePath = workDir + "/run_simulation_temp.bat";
     
-    // 传递态势文件路径和控制文件路径作为参数，添加 -u 参数使Python输出无缓冲
-    QStringList arguments;
-    arguments << "-u"  // 无缓冲模式，确保输出实时显示
-              << pythonScriptPath 
-              << situationFilePath 
-              << controlFilePath;
-    process->setArguments(arguments);
+    // 创建批处理文件内容 - 设置 Anaconda Prompt 样式的标题
+    QString batContent = QString(
+        "@echo off\n"
+        "REM Set UTF-8 encoding\n"
+        "set PYTHONIOENCODING=utf-8\n"
+        "chcp 65001 >nul 2>&1\n"
+        "\n"
+        "REM Set window title\n"
+        "title Python Simulation (ppoa)\n"
+        "\n"
+        "REM Change to working directory\n"
+        "cd /d \"%1\"\n"
+        "\n"
+        "echo.\n"
+        "echo ========================================\n"
+        "echo   Activating conda environment: ppoa\n"
+        "echo ========================================\n"
+        "echo.\n"
+        "\n"
+        "REM Activate ppoa environment\n"
+        "call conda activate ppoa\n"
+        "\n"
+        "if errorlevel 1 (\n"
+        "    echo.\n"
+        "    echo [ERROR] Failed to activate ppoa environment\n"
+        "    echo Please make sure conda is in your PATH\n"
+        "    echo.\n"
+        "    pause\n"
+        "    exit /b 1\n"
+        ")\n"
+        "\n"
+        "echo.\n"
+        "echo ========================================\n"
+        "echo   Environment: ppoa (activated)\n"
+        "echo   Working Dir: %CD%\n"
+        "echo ========================================\n"
+        "echo.\n"
+        "echo Running Python script...\n"
+        "echo.\n"
+        "\n"
+        "REM Run Python script\n"
+        "python -u \"%2\" \"%3\" \"%4\"\n"
+        "\n"
+        "echo.\n"
+        "echo ========================================\n"
+        "echo   Simulation Complete!\n"
+        "echo ========================================\n"
+        "echo.\n"
+        "echo Type 'exit' to close this window\n"
+        "echo.\n"
+    ).arg(workDir)
+     .arg(pythonScriptPath)
+     .arg(situationFilePath)
+     .arg(controlFilePath);
     
+    // 写入批处理文件
+    QFile batFile(batFilePath);
+    if (batFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&batFile);
+        out.setCodec("GBK");  // Windows批处理文件使用GBK编码
+        out << batContent;
+        batFile.close();
+        
+        addLogMessage(QString("创建临时批处理文件：%1").arg(batFilePath), "INFO");
+    } else {
+        addLogMessage("无法创建临时批处理文件", "ERROR");
+        QMessageBox::critical(this, "错误", "无法创建临时批处理文件");
+        enableSimulationControls(false);
+        return;
+    }
+    
+    addLogMessage("将在新窗口中运行Python脚本", "INFO");
     addLogMessage(QString("执行Python脚本：%1").arg(pythonScriptPath), "INFO");
     addLogMessage(QString("态势文件：%1").arg(situationFilePath), "INFO");
     addLogMessage(QString("控制文件：%1").arg(controlFilePath), "INFO");
     addLogMessage(QString("工作目录：%1").arg(workDir), "INFO");
-    addLogMessage("Python输出实时显示模式已启用", "INFO");
+    addLogMessage("【提示】Python输出将显示在独立的命令行窗口中", "SUCCESS");
     
-    // 连接输出信号（使用this捕获，实时显示Python输出）
-    connect(process, &QProcess::readyReadStandardOutput, this,
-            [this, process](){
-                QString output = QString::fromLocal8Bit(process->readAllStandardOutput());
-                if (!output.isEmpty()) {
-                    // 按行分割输出，每行单独显示
-                    QStringList lines = output.split('\n', QString::SkipEmptyParts);
-                    for (const QString &line : lines) {
-                        QString trimmedLine = line.trimmed();
-                        if (!trimmedLine.isEmpty()) {
-                            // 根据输出内容类型设置不同的日志级别
-                            if (trimmedLine.contains("错误") || trimmedLine.contains("ERROR") || 
-                                trimmedLine.contains("失败") || trimmedLine.startsWith("!")) {
-                                addLogMessage(trimmedLine, "ERROR");
-                            } else if (trimmedLine.contains("警告") || trimmedLine.contains("WARNING") || 
-                                       trimmedLine.startsWith("⚠")) {
-                                addLogMessage(trimmedLine, "WARNING");
-                            } else if (trimmedLine.contains("✓") || trimmedLine.contains("完成") || 
-                                       trimmedLine.contains("成功")) {
-                                addLogMessage(trimmedLine, "SUCCESS");
-                            } else {
-                                addLogMessage(trimmedLine, "INFO");
-                            }
-                        }
-                    }
-                }
-            });
+    // 使用 start 命令打开新的 CMD 窗口
+    // start 命令格式: start "窗口标题" /D "工作目录" cmd /K "批处理文件"
+    QString startCmd = QString("start \"Python Simulation\" /D \"%1\" cmd /K \"%2\"")
+                        .arg(workDir)
+                        .arg(batFilePath);
     
-    process->start();
-
-    // 连接进程完成信号
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            [=](int exitCode, QProcess::ExitStatus exitStatus){
-                if (exitStatus == QProcess::NormalExit && exitCode == 0) {
-                    addLogMessage("推演完成", "SUCCESS");
-                } else {
-                    addLogMessage("推演过程出现错误", "ERROR");
-                }
-                process->deleteLater();
-                // 推演结束后禁用控制按钮
-                enableSimulationControls(false);
-            });
-
-    // 连接错误信号
-    connect(process, &QProcess::errorOccurred,
-            [=](QProcess::ProcessError error){
-                addLogMessage(QString("推演启动失败：%1").arg(error), "ERROR");
-                process->deleteLater();
-                // 推演启动失败时禁用控制按钮
-                enableSimulationControls(false);
-            });
+    addLogMessage(QString("执行命令: %1").arg(startCmd), "INFO");
+    
+    // 使用 system() 执行 start 命令（这是 Windows 最可靠的方式）
+    int result = system(startCmd.toLocal8Bit().constData());
+    
+    if (result == 0) {
+        addLogMessage("✓ CMD窗口已启动，正在激活conda环境", "SUCCESS");
+        addLogMessage("【提示】请查看新打开的命令行窗口，将自动激活ppoa环境", "INFO");
+        addLogMessage("【提示】推演控制（暂停/倍速）功能仍然有效", "INFO");
+    } else {
+        addLogMessage(QString("启动失败 (返回码: %1)").arg(result), "ERROR");
+        addLogMessage(QString("请手动双击运行：%1").arg(batFilePath), "INFO");
+        QMessageBox::information(this, "提示", 
+            QString("自动启动失败，请手动双击运行：\n%1").arg(batFilePath));
+    }
 }
 
 // ================== 菜单栏槽函数 ==================

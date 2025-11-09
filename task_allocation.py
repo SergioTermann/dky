@@ -534,14 +534,14 @@ class GameBasedTaskAllocation:
     def compute_all_shapley_values(self):
         """计算所有无人机的Shapley值"""
         total_drones = len(self.U)
-        print(f"\n【计算Shapley值】")
-        print(f"  飞机总数: {total_drones} 架")
+        print(f"\n【计算Shapley值】", flush=True)
+        print(f"  飞机总数: {total_drones} 架", flush=True)
         
         if total_drones > 20:
-            print(f"  使用采样近似方法（大规模优化）")
-            print(f"  采样次数: {min(1000, max(100, total_drones * 5))} 次/架")
+            print(f"  使用采样近似方法（大规模优化）", flush=True)
+            print(f"  采样次数: {min(1000, max(100, total_drones * 5))} 次/架", flush=True)
         else:
-            print(f"  使用精确计算方法")
+            print(f"  使用精确计算方法", flush=True)
         
         start_time = time.time()
         
@@ -552,10 +552,10 @@ class GameBasedTaskAllocation:
             if (i + 1) % max(1, total_drones // 10) == 0:
                 progress = (i + 1) / total_drones * 100
                 elapsed = time.time() - start_time
-                print(f"  进度: {i+1}/{total_drones} ({progress:.0f}%) | 已用时: {elapsed:.1f}秒")
+                print(f"  进度: {i+1}/{total_drones} ({progress:.0f}%) | 已用时: {elapsed:.1f}秒", flush=True)
         
         elapsed = time.time() - start_time
-        print(f"  ✓ Shapley值计算完成，耗时: {elapsed:.2f}秒\n")
+        print(f"  ✓ Shapley值计算完成，耗时: {elapsed:.2f}秒\n", flush=True)
 
     def initialize_task_groups(self) -> List[TaskGroup]:
         """初始化任务分组"""
@@ -915,7 +915,7 @@ class GameBasedTaskAllocation:
         Args:
             task_mode: 任务模式，可选值为 "attack"(攻击), "defense"(防御), "confrontation"(对抗)
         """
-        print(f"执行任务分配，当前模式: {task_mode}")
+        print(f"执行任务分配，当前模式: {task_mode}", flush=True)
         
         # 计算Shapley值
         self.compute_all_shapley_values()
@@ -1139,9 +1139,9 @@ def execute_task_allocation(json_file):
             control_data = json.load(f)
             if 'blue_task_mode' in control_data:
                 task_mode = control_data['blue_task_mode']
-                print(f"当前蓝方任务模式: {task_mode}")
+                print(f"当前蓝方任务模式: {task_mode}", flush=True)
     except Exception as e:
-        print(f"读取控制文件失败，使用默认任务模式: {e}")
+        print(f"读取控制文件失败，使用默认任务模式: {e}", flush=True)
     
     # 创建任务分配系统
     allocator = GameBasedTaskAllocation(attack_drones_data, defense_drones_data)
@@ -1604,7 +1604,7 @@ class DroneSimulation:
             if actual_step % 50 == 0:
                 speed_indicator = f"[{self.speed_multiplier}x]"
                 progress_pct = (actual_step / steps * 100) if steps > 0 else 0
-                print(f"  仿真进度: {actual_step}/{steps} 步 ({progress_pct:.1f}%) {speed_indicator}")
+                print(f"  仿真进度: {actual_step}/{steps} 步 ({progress_pct:.1f}%) {speed_indicator}", flush=True)
             
             time.sleep(adjusted_interval)  # 根据倍速调整间隔
         
@@ -1661,26 +1661,26 @@ class DroneSimulation:
     def run_simulation(self, steps=100):
         """Run the full simulation with pause/resume support"""
         self.initialize_positions()
-        print("开始无人机仿真...")
+        print("开始无人机仿真...", flush=True)
         
         # 统计飞机数量
         total_drones = len(self.drone_positions)
         attack_drones = sum(1 for d in self.drone_positions.keys() if d.startswith('A'))
         defense_drones = total_drones - attack_drones
-        print(f"  红方(攻击)飞机: {attack_drones} 架")
-        print(f"  蓝方(防御)飞机: {defense_drones} 架")
-        print(f"  总计: {total_drones} 架")
+        print(f"  红方(攻击)飞机: {attack_drones} 架", flush=True)
+        print(f"  蓝方(防御)飞机: {defense_drones} 架", flush=True)
+        print(f"  总计: {total_drones} 架", flush=True)
         
         # 读取初始控制状态
         self._read_control_file()
-        print(f"  初始状态: {'暂停' if self.is_paused else '运行'} | 倍速: {self.speed_multiplier}x")
+        print(f"  初始状态: {'暂停' if self.is_paused else '运行'} | 倍速: {self.speed_multiplier}x", flush=True)
         
         # 在Tacview中显示目标区域中心点（在第一帧之前发送）
         if self.tacview_streamer and self.tacview_streamer.is_connected:
             self.tacview_streamer.send_target_area(self.target_area)
-            print(f"  Tacview数据流已启动，使用批量发送模式（支持大规模飞机）")
+            print(f"  Tacview数据流已启动，使用批量发送模式（支持大规模飞机）", flush=True)
         
-        print(f"\n提示: 可通过界面的暂停/继续按钮和倍速选择器实时控制推演\n")
+        print(f"\n提示: 可通过界面的暂停/继续按钮和倍速选择器实时控制推演\n", flush=True)
         
         self.update_positions(steps)
         metrics = self.calculate_performance_metrics()
@@ -1741,12 +1741,12 @@ if __name__ == "__main__":
     
     if len(sys.argv) > 1:
         situation_file = sys.argv[1]
-        print(f"✓ 使用指定的态势文件: {situation_file}")
+        print(f"✓ 使用指定的态势文件: {situation_file}", flush=True)
         
         # 如果提供了第二个参数，作为控制文件路径
         if len(sys.argv) > 2:
             control_file = sys.argv[2]
-            print(f"✓ 使用指定的控制文件: {control_file}")
+            print(f"✓ 使用指定的控制文件: {control_file}", flush=True)
     else:
         # 弹出文件选择对话框
         print("请选择态势文件（JSON或XML）...")
@@ -1765,9 +1765,9 @@ if __name__ == "__main__":
         sys.exit(1)
     
     try:
-        print('\n' + '-' * 70)
-        print('【步骤1】执行任务分配...')
-        print('-' * 70)
+        print('\n' + '-' * 70, flush=True)
+        print('【步骤1】执行任务分配...', flush=True)
+        print('-' * 70, flush=True)
         
         # 执行任务分配
         allocation_result = execute_task_allocation(situation_file)
@@ -1776,18 +1776,18 @@ if __name__ == "__main__":
         with open('task_allocation_output.json', 'w', encoding='utf-8') as f:
             json.dump(allocation_result, f, indent=2, ensure_ascii=False)
         
-        print(f"\n✓ 任务分配完成，结果已保存到 task_allocation_output.json")
+        print(f"\n✓ 任务分配完成，结果已保存到 task_allocation_output.json", flush=True)
 
         # 运行仿真
-        print('\n' + '-' * 70)
-        print('【步骤2】启动仿真推演...')
-        print('-' * 70)
-        print('\n【重要】Tacview使用说明:')
-        print('  1. 打开 Tacview 软件')
-        print('  2. 点击菜单: File -> Import Data from Real-Time Source')
-        print('  3. 输入地址: 127.0.0.1:58008')
-        print('  4. 点击 Connect')
-        print('  5. 返回本程序等待连接...\n')
+        print('\n' + '-' * 70, flush=True)
+        print('【步骤2】启动仿真推演...', flush=True)
+        print('-' * 70, flush=True)
+        print('\n【重要】Tacview使用说明:', flush=True)
+        print('  1. 打开 Tacview 软件', flush=True)
+        print('  2. 点击菜单: File -> Import Data from Real-Time Source', flush=True)
+        print('  3. 输入地址: 127.0.0.1:58008', flush=True)
+        print('  4. 点击 Connect', flush=True)
+        print('  5. 返回本程序等待连接...\n', flush=True)
         
         simulation = DroneSimulation(allocation_result, control_file_path=control_file)
         

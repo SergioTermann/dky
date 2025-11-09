@@ -20,6 +20,8 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QDesktopServices>
+#include <QUrl>
 #include "aircraftmodel.h"
 #include "situationgenerator.h"
 

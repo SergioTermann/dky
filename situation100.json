@@ -1,0 +1,2050 @@
+{
+    "blue_aircraft": [
+        {
+            "altitude": 6672,
+            "heading": 2,
+            "id": 1,
+            "latitude": 36.56,
+            "longitude": 113.12,
+            "speed": 523,
+            "status": "待命",
+            "type": "蓝方飞机1"
+        },
+        {
+            "altitude": 8260,
+            "heading": 93,
+            "id": 2,
+            "latitude": 39.21,
+            "longitude": 108.85,
+            "speed": 494,
+            "status": "待命",
+            "type": "蓝方飞机2"
+        },
+        {
+            "altitude": 5041,
+            "heading": 218,
+            "id": 3,
+            "latitude": 35.85,
+            "longitude": 108.99,
+            "speed": 480,
+            "status": "待命",
+            "type": "蓝方飞机3"
+        },
+        {
+            "altitude": 7491,
+            "heading": 59,
+            "id": 4,
+            "latitude": 30.24,
+            "longitude": 105.37,
+            "speed": 534,
+            "status": "待命",
+            "type": "蓝方飞机4"
+        },
+        {
+            "altitude": 5223,
+            "heading": 215,
+            "id": 5,
+            "latitude": 38.74,
+            "longitude": 110.44,
+            "speed": 477,
+            "status": "待命",
+            "type": "蓝方飞机5"
+        },
+        {
+            "altitude": 7306,
+            "heading": 284,
+            "id": 6,
+            "latitude": 30.97,
+            "longitude": 107.22,
+            "speed": 502,
+            "status": "待命",
+            "type": "蓝方飞机6"
+        },
+        {
+            "altitude": 8572,
+            "heading": 300,
+            "id": 7,
+            "latitude": 33.11,
+            "longitude": 113.48,
+            "speed": 565,
+            "status": "待命",
+            "type": "蓝方飞机7"
+        },
+        {
+            "altitude": 8687,
+            "heading": 259,
+            "id": 8,
+            "latitude": 31.32,
+            "longitude": 110.3,
+            "speed": 463,
+            "status": "待命",
+            "type": "蓝方飞机8"
+        },
+        {
+            "altitude": 6393,
+            "heading": 225,
+            "id": 9,
+            "latitude": 35.01,
+            "longitude": 107.58,
+            "speed": 467,
+            "status": "待命",
+            "type": "蓝方飞机9"
+        },
+        {
+            "altitude": 6513,
+            "heading": 37,
+            "id": 10,
+            "latitude": 32.03,
+            "longitude": 107.75,
+            "speed": 449,
+            "status": "待命",
+            "type": "蓝方飞机10"
+        },
+        {
+            "altitude": 7783,
+            "heading": 328,
+            "id": 11,
+            "latitude": 32.91,
+            "longitude": 109.67,
+            "speed": 439,
+            "status": "待命",
+            "type": "蓝方飞机11"
+        },
+        {
+            "altitude": 9799,
+            "heading": 74,
+            "id": 12,
+            "latitude": 31.26,
+            "longitude": 110.46,
+            "speed": 527,
+            "status": "待命",
+            "type": "蓝方飞机12"
+        },
+        {
+            "altitude": 7005,
+            "heading": 120,
+            "id": 13,
+            "latitude": 33.95,
+            "longitude": 110.33,
+            "speed": 480,
+            "status": "待命",
+            "type": "蓝方飞机13"
+        },
+        {
+            "altitude": 7564,
+            "heading": 286,
+            "id": 14,
+            "latitude": 30.46,
+            "longitude": 113.45,
+            "speed": 555,
+            "status": "待命",
+            "type": "蓝方飞机14"
+        },
+        {
+            "altitude": 8644,
+            "heading": 76,
+            "id": 15,
+            "latitude": 38.49,
+            "longitude": 110.41,
+            "speed": 474,
+            "status": "待命",
+            "type": "蓝方飞机15"
+        },
+        {
+            "altitude": 9104,
+            "heading": 296,
+            "id": 16,
+            "latitude": 30.65,
+            "longitude": 105.43,
+            "speed": 486,
+            "status": "待命",
+            "type": "蓝方飞机16"
+        },
+        {
+            "altitude": 7092,
+            "heading": 144,
+            "id": 17,
+            "latitude": 31.65,
+            "longitude": 112.78,
+            "speed": 586,
+            "status": "待命",
+            "type": "蓝方飞机17"
+        },
+        {
+            "altitude": 6188,
+            "heading": 162,
+            "id": 18,
+            "latitude": 33.57,
+            "longitude": 106.13,
+            "speed": 454,
+            "status": "待命",
+            "type": "蓝方飞机18"
+        },
+        {
+            "altitude": 9183,
+            "heading": 216,
+            "id": 19,
+            "latitude": 33.23,
+            "longitude": 113.81,
+            "speed": 496,
+            "status": "待命",
+            "type": "蓝方飞机19"
+        },
+        {
+            "altitude": 7609,
+            "heading": 234,
+            "id": 20,
+            "latitude": 34.41,
+            "longitude": 110.11,
+            "speed": 526,
+            "status": "待命",
+            "type": "蓝方飞机20"
+        },
+        {
+            "altitude": 8259,
+            "heading": 317,
+            "id": 21,
+            "latitude": 31.41,
+            "longitude": 106.52,
+            "speed": 577,
+            "status": "待命",
+            "type": "蓝方飞机21"
+        },
+        {
+            "altitude": 7272,
+            "heading": 239,
+            "id": 22,
+            "latitude": 34.08,
+            "longitude": 108.32,
+            "speed": 496,
+            "status": "待命",
+            "type": "蓝方飞机22"
+        },
+        {
+            "altitude": 6116,
+            "heading": 215,
+            "id": 23,
+            "latitude": 31.46,
+            "longitude": 113.91,
+            "speed": 413,
+            "status": "待命",
+            "type": "蓝方飞机23"
+        },
+        {
+            "altitude": 5439,
+            "heading": 339,
+            "id": 24,
+            "latitude": 30.74,
+            "longitude": 107.01,
+            "speed": 550,
+            "status": "待命",
+            "type": "蓝方飞机24"
+        },
+        {
+            "altitude": 7345,
+            "heading": 21,
+            "id": 25,
+            "latitude": 39.26,
+            "longitude": 110.85,
+            "speed": 502,
+            "status": "待命",
+            "type": "蓝方飞机25"
+        },
+        {
+            "altitude": 7413,
+            "heading": 175,
+            "id": 26,
+            "latitude": 34.33,
+            "longitude": 114.95,
+            "speed": 461,
+            "status": "待命",
+            "type": "蓝方飞机26"
+        },
+        {
+            "altitude": 8274,
+            "heading": 328,
+            "id": 27,
+            "latitude": 32.44,
+            "longitude": 111.62,
+            "speed": 444,
+            "status": "待命",
+            "type": "蓝方飞机27"
+        },
+        {
+            "altitude": 8372,
+            "heading": 171,
+            "id": 28,
+            "latitude": 33.88,
+            "longitude": 113.56,
+            "speed": 565,
+            "status": "待命",
+            "type": "蓝方飞机28"
+        },
+        {
+            "altitude": 6546,
+            "heading": 294,
+            "id": 29,
+            "latitude": 34.88,
+            "longitude": 110.82,
+            "speed": 590,
+            "status": "待命",
+            "type": "蓝方飞机29"
+        },
+        {
+            "altitude": 8431,
+            "heading": 241,
+            "id": 30,
+            "latitude": 37.65,
+            "longitude": 109.68,
+            "speed": 566,
+            "status": "待命",
+            "type": "蓝方飞机30"
+        },
+        {
+            "altitude": 8334,
+            "heading": 205,
+            "id": 31,
+            "latitude": 32.14,
+            "longitude": 107.1,
+            "speed": 467,
+            "status": "待命",
+            "type": "蓝方飞机31"
+        },
+        {
+            "altitude": 8164,
+            "heading": 306,
+            "id": 32,
+            "latitude": 33.74,
+            "longitude": 112.31,
+            "speed": 456,
+            "status": "待命",
+            "type": "蓝方飞机32"
+        },
+        {
+            "altitude": 7021,
+            "heading": 297,
+            "id": 33,
+            "latitude": 38.16,
+            "longitude": 107.86,
+            "speed": 585,
+            "status": "待命",
+            "type": "蓝方飞机33"
+        },
+        {
+            "altitude": 7513,
+            "heading": 208,
+            "id": 34,
+            "latitude": 39.33,
+            "longitude": 112.23,
+            "speed": 409,
+            "status": "待命",
+            "type": "蓝方飞机34"
+        },
+        {
+            "altitude": 6284,
+            "heading": 355,
+            "id": 35,
+            "latitude": 34.03,
+            "longitude": 111.02,
+            "speed": 492,
+            "status": "待命",
+            "type": "蓝方飞机35"
+        },
+        {
+            "altitude": 8074,
+            "heading": 117,
+            "id": 36,
+            "latitude": 36.32,
+            "longitude": 112.89,
+            "speed": 414,
+            "status": "待命",
+            "type": "蓝方飞机36"
+        },
+        {
+            "altitude": 5179,
+            "heading": 70,
+            "id": 37,
+            "latitude": 31.59,
+            "longitude": 112.95,
+            "speed": 446,
+            "status": "待命",
+            "type": "蓝方飞机37"
+        },
+        {
+            "altitude": 5897,
+            "heading": 348,
+            "id": 38,
+            "latitude": 37.81,
+            "longitude": 111.01,
+            "speed": 498,
+            "status": "待命",
+            "type": "蓝方飞机38"
+        },
+        {
+            "altitude": 7268,
+            "heading": 338,
+            "id": 39,
+            "latitude": 30.45,
+            "longitude": 110.4,
+            "speed": 477,
+            "status": "待命",
+            "type": "蓝方飞机39"
+        },
+        {
+            "altitude": 9978,
+            "heading": 210,
+            "id": 40,
+            "latitude": 39.81,
+            "longitude": 105.74,
+            "speed": 403,
+            "status": "待命",
+            "type": "蓝方飞机40"
+        },
+        {
+            "altitude": 9928,
+            "heading": 321,
+            "id": 41,
+            "latitude": 36.41,
+            "longitude": 107.13,
+            "speed": 449,
+            "status": "待命",
+            "type": "蓝方飞机41"
+        },
+        {
+            "altitude": 6870,
+            "heading": 263,
+            "id": 42,
+            "latitude": 32.69,
+            "longitude": 110.93,
+            "speed": 442,
+            "status": "待命",
+            "type": "蓝方飞机42"
+        },
+        {
+            "altitude": 8417,
+            "heading": 319,
+            "id": 43,
+            "latitude": 35.79,
+            "longitude": 106.54,
+            "speed": 449,
+            "status": "待命",
+            "type": "蓝方飞机43"
+        },
+        {
+            "altitude": 6368,
+            "heading": 168,
+            "id": 44,
+            "latitude": 34.4,
+            "longitude": 111.1,
+            "speed": 571,
+            "status": "待命",
+            "type": "蓝方飞机44"
+        },
+        {
+            "altitude": 6863,
+            "heading": 197,
+            "id": 45,
+            "latitude": 30.57,
+            "longitude": 110.78,
+            "speed": 431,
+            "status": "待命",
+            "type": "蓝方飞机45"
+        },
+        {
+            "altitude": 7118,
+            "heading": 250,
+            "id": 46,
+            "latitude": 30.54,
+            "longitude": 113.84,
+            "speed": 511,
+            "status": "待命",
+            "type": "蓝方飞机46"
+        },
+        {
+            "altitude": 9911,
+            "heading": 255,
+            "id": 47,
+            "latitude": 36.83,
+            "longitude": 113.64,
+            "speed": 528,
+            "status": "待命",
+            "type": "蓝方飞机47"
+        },
+        {
+            "altitude": 8441,
+            "heading": 178,
+            "id": 48,
+            "latitude": 39.42,
+            "longitude": 105.76,
+            "speed": 489,
+            "status": "待命",
+            "type": "蓝方飞机48"
+        },
+        {
+            "altitude": 7392,
+            "heading": 336,
+            "id": 49,
+            "latitude": 36.27,
+            "longitude": 114.97,
+            "speed": 512,
+            "status": "待命",
+            "type": "蓝方飞机49"
+        },
+        {
+            "altitude": 8267,
+            "heading": 168,
+            "id": 50,
+            "latitude": 30.87,
+            "longitude": 109.48,
+            "speed": 516,
+            "status": "待命",
+            "type": "蓝方飞机50"
+        },
+        {
+            "altitude": 6725,
+            "heading": 71,
+            "id": 51,
+            "latitude": 30.89,
+            "longitude": 110.66,
+            "speed": 541,
+            "status": "待命",
+            "type": "蓝方飞机51"
+        },
+        {
+            "altitude": 9111,
+            "heading": 14,
+            "id": 52,
+            "latitude": 32.19,
+            "longitude": 106.35,
+            "speed": 577,
+            "status": "待命",
+            "type": "蓝方飞机52"
+        },
+        {
+            "altitude": 6220,
+            "heading": 271,
+            "id": 53,
+            "latitude": 35.85,
+            "longitude": 106.26,
+            "speed": 549,
+            "status": "待命",
+            "type": "蓝方飞机53"
+        },
+        {
+            "altitude": 7765,
+            "heading": 210,
+            "id": 54,
+            "latitude": 32.95,
+            "longitude": 114.72,
+            "speed": 553,
+            "status": "待命",
+            "type": "蓝方飞机54"
+        },
+        {
+            "altitude": 9624,
+            "heading": 185,
+            "id": 55,
+            "latitude": 37.69,
+            "longitude": 108.27,
+            "speed": 518,
+            "status": "待命",
+            "type": "蓝方飞机55"
+        },
+        {
+            "altitude": 6178,
+            "heading": 288,
+            "id": 56,
+            "latitude": 38.73,
+            "longitude": 112.88,
+            "speed": 402,
+            "status": "待命",
+            "type": "蓝方飞机56"
+        },
+        {
+            "altitude": 5701,
+            "heading": 75,
+            "id": 57,
+            "latitude": 37.13,
+            "longitude": 112.86,
+            "speed": 548,
+            "status": "待命",
+            "type": "蓝方飞机57"
+        },
+        {
+            "altitude": 7005,
+            "heading": 348,
+            "id": 58,
+            "latitude": 34.53,
+            "longitude": 113.14,
+            "speed": 582,
+            "status": "待命",
+            "type": "蓝方飞机58"
+        },
+        {
+            "altitude": 8386,
+            "heading": 233,
+            "id": 59,
+            "latitude": 37.85,
+            "longitude": 110.87,
+            "speed": 408,
+            "status": "待命",
+            "type": "蓝方飞机59"
+        },
+        {
+            "altitude": 7764,
+            "heading": 292,
+            "id": 60,
+            "latitude": 38.54,
+            "longitude": 108.92,
+            "speed": 568,
+            "status": "待命",
+            "type": "蓝方飞机60"
+        },
+        {
+            "altitude": 8239,
+            "heading": 212,
+            "id": 61,
+            "latitude": 34.38,
+            "longitude": 110.64,
+            "speed": 546,
+            "status": "待命",
+            "type": "蓝方飞机61"
+        },
+        {
+            "altitude": 5824,
+            "heading": 272,
+            "id": 62,
+            "latitude": 31.41,
+            "longitude": 114.12,
+            "speed": 427,
+            "status": "待命",
+            "type": "蓝方飞机62"
+        },
+        {
+            "altitude": 5355,
+            "heading": 137,
+            "id": 63,
+            "latitude": 31.94,
+            "longitude": 111.42,
+            "speed": 507,
+            "status": "待命",
+            "type": "蓝方飞机63"
+        },
+        {
+            "altitude": 6798,
+            "heading": 131,
+            "id": 64,
+            "latitude": 33.81,
+            "longitude": 110.76,
+            "speed": 472,
+            "status": "待命",
+            "type": "蓝方飞机64"
+        },
+        {
+            "altitude": 5731,
+            "heading": 260,
+            "id": 65,
+            "latitude": 32.37,
+            "longitude": 108.16,
+            "speed": 576,
+            "status": "待命",
+            "type": "蓝方飞机65"
+        },
+        {
+            "altitude": 9603,
+            "heading": 242,
+            "id": 66,
+            "latitude": 36.78,
+            "longitude": 109.55,
+            "speed": 411,
+            "status": "待命",
+            "type": "蓝方飞机66"
+        },
+        {
+            "altitude": 8471,
+            "heading": 225,
+            "id": 67,
+            "latitude": 33.52,
+            "longitude": 105.25,
+            "speed": 523,
+            "status": "待命",
+            "type": "蓝方飞机67"
+        },
+        {
+            "altitude": 6281,
+            "heading": 44,
+            "id": 68,
+            "latitude": 32.72,
+            "longitude": 105.93,
+            "speed": 484,
+            "status": "待命",
+            "type": "蓝方飞机68"
+        },
+        {
+            "altitude": 7909,
+            "heading": 134,
+            "id": 69,
+            "latitude": 36.51,
+            "longitude": 110.82,
+            "speed": 416,
+            "status": "待命",
+            "type": "蓝方飞机69"
+        },
+        {
+            "altitude": 8718,
+            "heading": 11,
+            "id": 70,
+            "latitude": 30.66,
+            "longitude": 112.34,
+            "speed": 522,
+            "status": "待命",
+            "type": "蓝方飞机70"
+        },
+        {
+            "altitude": 5095,
+            "heading": 322,
+            "id": 71,
+            "latitude": 33.03,
+            "longitude": 106.94,
+            "speed": 409,
+            "status": "待命",
+            "type": "蓝方飞机71"
+        },
+        {
+            "altitude": 8735,
+            "heading": 327,
+            "id": 72,
+            "latitude": 37.23,
+            "longitude": 112.22,
+            "speed": 418,
+            "status": "待命",
+            "type": "蓝方飞机72"
+        },
+        {
+            "altitude": 6892,
+            "heading": 96,
+            "id": 73,
+            "latitude": 39.57,
+            "longitude": 108.18,
+            "speed": 401,
+            "status": "待命",
+            "type": "蓝方飞机73"
+        },
+        {
+            "altitude": 9876,
+            "heading": 97,
+            "id": 74,
+            "latitude": 33.88,
+            "longitude": 111.99,
+            "speed": 540,
+            "status": "待命",
+            "type": "蓝方飞机74"
+        },
+        {
+            "altitude": 5867,
+            "heading": 148,
+            "id": 75,
+            "latitude": 33.35,
+            "longitude": 109.86,
+            "speed": 481,
+            "status": "待命",
+            "type": "蓝方飞机75"
+        },
+        {
+            "altitude": 7002,
+            "heading": 118,
+            "id": 76,
+            "latitude": 32.04,
+            "longitude": 114.71,
+            "speed": 575,
+            "status": "待命",
+            "type": "蓝方飞机76"
+        },
+        {
+            "altitude": 8561,
+            "heading": 126,
+            "id": 77,
+            "latitude": 32.79,
+            "longitude": 114.94,
+            "speed": 425,
+            "status": "待命",
+            "type": "蓝方飞机77"
+        },
+        {
+            "altitude": 6752,
+            "heading": 198,
+            "id": 78,
+            "latitude": 37.69,
+            "longitude": 106.43,
+            "speed": 559,
+            "status": "待命",
+            "type": "蓝方飞机78"
+        },
+        {
+            "altitude": 5976,
+            "heading": 247,
+            "id": 79,
+            "latitude": 31.15,
+            "longitude": 113.7,
+            "speed": 468,
+            "status": "待命",
+            "type": "蓝方飞机79"
+        },
+        {
+            "altitude": 6053,
+            "heading": 260,
+            "id": 80,
+            "latitude": 38.81,
+            "longitude": 110.84,
+            "speed": 506,
+            "status": "待命",
+            "type": "蓝方飞机80"
+        },
+        {
+            "altitude": 9939,
+            "heading": 89,
+            "id": 81,
+            "latitude": 37.77,
+            "longitude": 114.44,
+            "speed": 562,
+            "status": "待命",
+            "type": "蓝方飞机81"
+        },
+        {
+            "altitude": 8587,
+            "heading": 328,
+            "id": 82,
+            "latitude": 30.07,
+            "longitude": 109.12,
+            "speed": 419,
+            "status": "待命",
+            "type": "蓝方飞机82"
+        },
+        {
+            "altitude": 8086,
+            "heading": 166,
+            "id": 83,
+            "latitude": 34.95,
+            "longitude": 110.86,
+            "speed": 561,
+            "status": "待命",
+            "type": "蓝方飞机83"
+        },
+        {
+            "altitude": 6273,
+            "heading": 242,
+            "id": 84,
+            "latitude": 31.78,
+            "longitude": 114.06,
+            "speed": 542,
+            "status": "待命",
+            "type": "蓝方飞机84"
+        },
+        {
+            "altitude": 5770,
+            "heading": 24,
+            "id": 85,
+            "latitude": 34.06,
+            "longitude": 108.29,
+            "speed": 504,
+            "status": "待命",
+            "type": "蓝方飞机85"
+        },
+        {
+            "altitude": 5037,
+            "heading": 272,
+            "id": 86,
+            "latitude": 36.59,
+            "longitude": 111.17,
+            "speed": 457,
+            "status": "待命",
+            "type": "蓝方飞机86"
+        },
+        {
+            "altitude": 6005,
+            "heading": 146,
+            "id": 87,
+            "latitude": 31.11,
+            "longitude": 113.97,
+            "speed": 471,
+            "status": "待命",
+            "type": "蓝方飞机87"
+        },
+        {
+            "altitude": 8874,
+            "heading": 199,
+            "id": 88,
+            "latitude": 37.92,
+            "longitude": 114.25,
+            "speed": 478,
+            "status": "待命",
+            "type": "蓝方飞机88"
+        },
+        {
+            "altitude": 5809,
+            "heading": 157,
+            "id": 89,
+            "latitude": 33.42,
+            "longitude": 107.06,
+            "speed": 569,
+            "status": "待命",
+            "type": "蓝方飞机89"
+        },
+        {
+            "altitude": 7730,
+            "heading": 6,
+            "id": 90,
+            "latitude": 36.25,
+            "longitude": 114.85,
+            "speed": 554,
+            "status": "待命",
+            "type": "蓝方飞机90"
+        },
+        {
+            "altitude": 8232,
+            "heading": 189,
+            "id": 91,
+            "latitude": 30.87,
+            "longitude": 105.41,
+            "speed": 493,
+            "status": "待命",
+            "type": "蓝方飞机91"
+        },
+        {
+            "altitude": 9691,
+            "heading": 120,
+            "id": 92,
+            "latitude": 37.74,
+            "longitude": 108.09,
+            "speed": 455,
+            "status": "待命",
+            "type": "蓝方飞机92"
+        },
+        {
+            "altitude": 6650,
+            "heading": 186,
+            "id": 93,
+            "latitude": 39.42,
+            "longitude": 107.09,
+            "speed": 597,
+            "status": "待命",
+            "type": "蓝方飞机93"
+        },
+        {
+            "altitude": 7359,
+            "heading": 309,
+            "id": 94,
+            "latitude": 31.32,
+            "longitude": 114.72,
+            "speed": 433,
+            "status": "待命",
+            "type": "蓝方飞机94"
+        },
+        {
+            "altitude": 5658,
+            "heading": 325,
+            "id": 95,
+            "latitude": 34.16,
+            "longitude": 113.57,
+            "speed": 485,
+            "status": "待命",
+            "type": "蓝方飞机95"
+        },
+        {
+            "altitude": 8447,
+            "heading": 0,
+            "id": 96,
+            "latitude": 35.43,
+            "longitude": 108.33,
+            "speed": 570,
+            "status": "待命",
+            "type": "蓝方飞机96"
+        },
+        {
+            "altitude": 7700,
+            "heading": 204,
+            "id": 97,
+            "latitude": 38.86,
+            "longitude": 105.54,
+            "speed": 400,
+            "status": "待命",
+            "type": "蓝方飞机97"
+        },
+        {
+            "altitude": 7827,
+            "heading": 114,
+            "id": 98,
+            "latitude": 32.97,
+            "longitude": 108.41,
+            "speed": 506,
+            "status": "待命",
+            "type": "蓝方飞机98"
+        },
+        {
+            "altitude": 5144,
+            "heading": 196,
+            "id": 99,
+            "latitude": 31.83,
+            "longitude": 109.53,
+            "speed": 438,
+            "status": "待命",
+            "type": "蓝方飞机99"
+        },
+        {
+            "altitude": 8145,
+            "heading": 24,
+            "id": 100,
+            "latitude": 34.31,
+            "longitude": 107.86,
+            "speed": 569,
+            "status": "待命",
+            "type": "蓝方飞机100"
+        },
+        {
+            "altitude": 5879,
+            "heading": 65,
+            "id": 101,
+            "latitude": 36.67,
+            "longitude": 107.75,
+            "speed": 589,
+            "status": "待命",
+            "type": "蓝方飞机101"
+        },
+        {
+            "altitude": 9683,
+            "heading": 186,
+            "id": 102,
+            "latitude": 34.06,
+            "longitude": 113.14,
+            "speed": 588,
+            "status": "待命",
+            "type": "蓝方飞机102"
+        },
+        {
+            "altitude": 8342,
+            "heading": 5,
+            "id": 103,
+            "latitude": 33.08,
+            "longitude": 112.21,
+            "speed": 497,
+            "status": "待命",
+            "type": "蓝方飞机103"
+        }
+    ],
+    "parameters": {
+        "blue_count": 103,
+        "strategy": "中等"
+    },
+    "red_aircraft": [
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 1,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 2,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 3,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 4,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 5,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 6,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 7,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 8,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 9,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 10,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 11,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 12,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 13,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 14,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 15,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 16,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 17,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 18,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 19,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 20,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 21,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 22,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 23,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 24,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 25,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 26,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 27,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 28,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 29,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 30,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 31,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 32,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 33,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 34,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 35,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 36,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 37,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 38,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 39,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 40,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 41,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 42,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 43,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 44,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 45,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 46,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 47,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 48,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 49,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 50,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 51,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 52,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 53,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 54,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 55,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 56,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 57,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 58,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 59,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 60,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 61,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 62,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 63,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 64,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 65,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 66,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 67,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 68,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 69,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 70,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 71,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 72,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 73,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 74,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 75,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 76,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 77,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 78,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 79,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 80,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 81,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 82,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 83,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 84,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 85,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 86,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 87,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 88,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 89,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 90,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 91,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 92,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 93,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 94,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 95,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 96,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 97,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 98,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 99,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 100,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        },
+        {
+            "altitude": 5000,
+            "heading": 0,
+            "id": 101,
+            "latitude": 0,
+            "longitude": 0,
+            "speed": 500,
+            "status": "待命",
+            "type": "新飞机"
+        }
+    ]
+}

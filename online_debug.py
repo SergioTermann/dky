@@ -15,9 +15,9 @@ import struct
 import subprocess
 
 # QT与DKY通信地址
-REMOTE_IP = '127.0.0.1'  #'180.1.80.242'  or '127.0.0.1'
-REMOTE_PORT = 1001
-LOCAL_IP = '127.0.0.1'  #'180.1.80.129'  or '127.0.0.1'
+REMOTE_IP = '127.0.0.1'  #'180.1.80.240'  or '127.0.0.1'
+REMOTE_PORT = 1007
+LOCAL_IP = '127.0.0.1'  #'180.1.80.139'  or '127.0.0.1'
 LOCAL_PORT = 10113
 
 
@@ -106,12 +106,27 @@ class UDPMessageParser:
         }
     
     @staticmethod
+    def parse_sim_rate_message(data):
+        """解析仿真倍速调节消息(0x0009)"""
+        if len(data) < 29:  # 消息头26字节 + ControlType(1) + SimRate(2) = 29字节
+            return None
+            
+        # ControlType(1字节) + SimRate(2字节)
+        control_type = struct.unpack('<b', data[26:27])[0]
+        sim_rate = struct.unpack('<H', data[27:29])[0]
+        
+        return {
+            'ControlType': control_type,
+            'SimRate': sim_rate
+        }
+    
+    @staticmethod
     def create_control_feedback_message(control_type, control_feedback=1):
         """创建管控消息结果(0x0004)"""
         # 消息头
         msg_id = 0x0004
-        source_plat = 0x00000001  # 本地平台代码
-        receive_plat = 0x00000000  # 远端平台代码
+        source_plat = 0x11800000  # 本地平台代码
+        receive_plat = 0x10006  # 远端平台代码
         serial_num = int(time.time()) & 0xFFFFFFFF
         create_time = int(time.time() * 1000)  # 毫秒时间戳
         total_packs = 1
@@ -133,8 +148,8 @@ class UDPMessageParser:
         """创建试验准备反馈消息(0x0002)"""
         # 消息头
         msg_id = 0x0002
-        source_plat = 0x00000001  # 本地平台代码
-        receive_plat = 0x00000000  # 远端平台代码
+        source_plat = 0x11800000  # 本地平台代码
+        receive_plat = 0x10006  # 远端平台代码
         serial_num = int(time.time()) & 0xFFFFFFFF
         create_time = int(time.time() * 1000)  # 毫秒时间戳
         total_packs = 1
@@ -152,7 +167,7 @@ class UDPMessageParser:
         return header + body
 
     @staticmethod
-    def create_platform_status_message(platform_id=1, longitude=116.0, latitude=39.0, height=1000, 
+    def create_platform_status_message(platform_id=11800001, longitude=116.0, latitude=39.0, height=1000,
                                      speed=200, course=90, roll=0, pitch=0, amount=1, kind=1, 
                                      platform_type=11, commander_id=1, formation_id=1, task=0, 
                                      energy_remain=80, weapon_kind=0, weapon_amount=0, health_state=0,
@@ -161,8 +176,8 @@ class UDPMessageParser:
         """创建红方无人装备平台与系统状态消息(0x1001)"""
         # 消息头
         msg_id = 0x1001
-        source_plat = 0x00000001  # 本地平台代码
-        receive_plat = 0x00000000  # 远端平台代码
+        source_plat = 0x11800001  # 本地平台代码
+        receive_plat = 0x10006  # 远端平台代码
         serial_num = int(time.time()) & 0xFFFFFFFF
         create_time = int(time.time() * 1000)  # 毫秒时间戳
         total_packs = 1
@@ -238,7 +253,7 @@ class UDPMessageParser:
         # 消息头
         msg_id = 0x1000
         source_plat = 0x00000001  # 本地平台代码
-        receive_plat = 0x00000000  # 远端平台代码
+        receive_plat = 0x10006  # 远端平台代码
         serial_num = int(time.time()) & 0xFFFFFFFF
         create_time = int(time.time() * 1000)  # 毫秒时间戳
         total_packs = 1
@@ -279,8 +294,8 @@ class UDPMessageParser:
         """创建试验节点接入注册消息(0x0005)"""
         # 消息头
         msg_id = 0x0005
-        source_plat = 0x00000001  # 本地平台代码
-        receive_plat = 0x00000000  # 远端平台代码
+        source_plat = 0x11800000  # 本地平台代码
+        receive_plat = 0x10006  # 远端平台代码
         serial_num = int(time.time()) & 0xFFFFFFFF
         create_time = int(time.time() * 1000)  # 毫秒时间戳
         total_packs = 1
@@ -310,6 +325,29 @@ class UDPMessageParser:
         
         return header + body
 
+    @staticmethod
+    def create_heartbeat_message(node_type=7, node_status=0):
+        """创建实验节点心跳上报消息(0x0008)"""
+        # 消息头
+        msg_id = 0x0008
+        source_plat = 0x11800000  # 本地平台代码
+        receive_plat = 0x10006  # 远端平台代码
+        serial_num = int(time.time()) & 0xFFFFFFFF
+        create_time = int(time.time() * 1000)  # 毫秒时间戳
+        total_packs = 1
+        current_index = 1
+        data_length = 2  # NodeType(1) + NodeStatus(1)
+        
+        # 打包消息头: MsgID(2) + SourcePlatCode(4) + ReceivePlatCode(4) + SerialNum(4) + 
+        #           CreateTime(8) + TotalPacks(1) + CurrentIndex(1) + DataLength(2)
+        header = struct.pack('<HIIIQBBH', msg_id, source_plat, receive_plat, serial_num,
+                           create_time, total_packs, current_index, data_length)
+        
+        # 打包消息体: NodeType(1) + NodeStatus(1)
+        body = struct.pack('<bb', node_type, node_status)
+        
+        return header + body
+
 
 class OnlineDebugger:
     def __init__(self):
@@ -327,6 +365,9 @@ class OnlineDebugger:
         log_with_timestamp(f"online_debug.py与task_allocation.py脚本之间通信端口: 127.0.0.1:{self.status_broadcast_port}")
 
         self.start_flag = False
+        self.registered = False  # 节点注册状态
+        self.node_type = 7  # 节点类型：北航仿真节点
+        self.heartbeat_interval = 10  # 心跳间隔（秒）
 
     def connect_to_remote(self):
         """Create UDP socket for remote communication"""
@@ -448,6 +489,11 @@ class OnlineDebugger:
                         log_with_timestamp(f'[UDP客户端 {addr}] 注册结果: {reg_msg["RegResult"]}')
                         # log_with_timestamp(f'[UDP客户端 {addr}] 节点名称: {reg_msg["NodeName"]}')
                         # log_with_timestamp(f'[UDP客户端 {addr}] 原因: {reg_msg["Reason"]}')
+                        
+                        # 如果注册成功（RegResult=1），启动心跳上报
+                        if reg_msg["RegResult"] == 1 and not self.registered:
+                            self.registered = True
+                            log_with_timestamp(f'[UDP客户端 {addr}] 节点注册成功！开始心跳上报')
                     else:
                         log_with_timestamp(f'[UDP客户端 {addr}] 解析节点注册消息失败')
                 
@@ -498,6 +544,17 @@ class OnlineDebugger:
                             control_type, control_feedback=1)  # 1=执行成功
                         self.send_to_remote(feedback_msg)
                         log_with_timestamp(f'[UDP客户端 {addr}] 已发送管控消息结果反馈')
+                
+                # 如果接收到的是仿真倍速调节消息
+                elif msg_id == 0x0009:
+                    log_with_timestamp(f'[UDP客户端 {addr}] 接收到仿真倍速调节消息')
+                    sim_rate_msg = UDPMessageParser.parse_sim_rate_message(data)
+                    if sim_rate_msg:
+                        control_type = sim_rate_msg['ControlType']
+                        sim_rate = sim_rate_msg['SimRate']
+                        
+                        log_with_timestamp(f'[UDP客户端 {addr}] 倍速控制类型: {control_type}')
+                        log_with_timestamp(f'[UDP客户端 {addr}] 仿真倍速: {sim_rate}x')
 
         except Exception as e:
             log_with_timestamp(f'[UDP客户端 {addr}] 处理UDP数据时出错: {e}')
@@ -546,7 +603,7 @@ class OnlineDebugger:
                         for aircraft in red_aircraft_list:
                             # 构造平台状态消息
                             feedback_msg = UDPMessageParser.create_platform_status_message(
-                                platform_id=aircraft.get('platform_id', 1),
+                                platform_id=aircraft.get('platform_id', 1) + 0x11800000,  # ID格式: 0x11800001, 0x11800002...
                                 longitude=aircraft.get('longitude', 116.0),
                                 latitude=aircraft.get('latitude', 39.0),
                                 height=aircraft.get('height', 1000),
@@ -606,6 +663,32 @@ class OnlineDebugger:
             import traceback
             log_with_timestamp(f'完整错误跟踪: {traceback.format_exc()}')
 
+    def start_heartbeat(self):
+        """启动节点心跳上报线程，每10秒发送一次心跳"""
+        log_with_timestamp(f'心跳上报线程已启动，将每{self.heartbeat_interval}秒发送一次心跳')
+        
+        while self.running:
+            try:
+                # 等待节点注册成功
+                if self.registered:
+                    # 构造心跳消息
+                    heartbeat_msg = UDPMessageParser.create_heartbeat_message(
+                        node_type=self.node_type,
+                        node_status=0  # 0=正常状态
+                    )
+                    
+                    # 发送心跳消息
+                    self.send_to_remote(heartbeat_msg)
+                    log_with_timestamp(f'[心跳] 节点心跳已上报 (NodeType={self.node_type}, NodeStatus=0)')
+                
+                # 等待10秒再发送下一次心跳
+                time.sleep(self.heartbeat_interval)
+                
+            except Exception as e:
+                log_with_timestamp(f'[心跳] 发送心跳时出错: {e}')
+                import traceback
+                log_with_timestamp(f'[心跳] 完整错误跟踪: {traceback.format_exc()}')
+
     def run(self):
         """Run debugger"""
         log_with_timestamp('=' * 50)
@@ -624,10 +707,15 @@ class OnlineDebugger:
             status_thread = threading.Thread(target=self.start_status_listener)
             status_thread.daemon = True
             status_thread.start()
+            
+            # Start heartbeat thread for periodic heartbeat reporting
+            heartbeat_thread = threading.Thread(target=self.start_heartbeat)
+            heartbeat_thread.daemon = True
+            heartbeat_thread.start()
 
             # 在连接建立后立即发送节点注册消息
             registration_msg = UDPMessageParser.create_node_registration_message(
-                node_type=1,  # 北航实装节点
+                node_type=self.node_type,  # 北航实装节点
                 node_name="OnlineDebugNode",
                 reason=""
             )

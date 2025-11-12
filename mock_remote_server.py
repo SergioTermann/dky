@@ -13,7 +13,7 @@ from collections import defaultdict
 
 # 监听配置（模拟远端服务器）
 LISTEN_IP = '0.0.0.0'  # 监听所有网卡
-LISTEN_PORT = 1001
+LISTEN_PORT = 1007
 
 def log_with_timestamp(message):
     """带时间戳的日志输出"""

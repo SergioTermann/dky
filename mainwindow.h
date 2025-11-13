@@ -129,6 +129,7 @@ private:
     // XML文件处理函数
     bool saveToXml(const QString &fileName, const QList<Aircraft> &redList, const QList<Aircraft> &blueList, const QJsonObject &params);
     bool loadFromXml(const QString &fileName, QList<Aircraft> &aircraftList, QJsonObject &params);
+    bool loadRedFromScenarioXml(const QString &fileName, QList<Aircraft> &aircraftList);
 };
 
 #endif // MAINWINDOW_H

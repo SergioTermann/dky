@@ -1114,6 +1114,42 @@ void MainWindow::on_onlineDebugButton_clicked()
 {
     addLogMessage("启动在线调试功能...", "INFO");
     
+    // 首先弹出文件选择对话框，选择想定XML文件
+    QString fileName = QFileDialog::getOpenFileName(this,
+                                                    "选择想定XML文件",
+                                                    QDir::currentPath(),
+                                                    "XML Files (*.xml)");
+    
+    if (fileName.isEmpty()) {
+        addLogMessage("用户取消了文件选择", "INFO");
+        return;
+    }
+    
+    addLogMessage(QString("选择了想定文件: %1").arg(fileName), "INFO");
+    
+    // 从XML文件中加载红方态势
+    QList<Aircraft> redAircraftList;
+    if (!loadRedFromScenarioXml(fileName, redAircraftList)) {
+        QMessageBox::critical(this, "错误", "无法解析想定XML文件或未找到红方态势数据");
+        addLogMessage("想定XML文件解析失败", "ERROR");
+        return;
+    }
+    
+    // 清空当前红方数据并加载新数据
+    redAircraftModel->clearAircraft();
+    redAircraftModel->setAircraftList(redAircraftList);
+    
+    // 更新nextAircraftId
+    int maxId = 0;
+    for (const auto& aircraft : redAircraftList) {
+        if (aircraft.id > maxId) maxId = aircraft.id;
+    }
+    nextAircraftId = maxId + 1;
+    
+    addLogMessage(QString("成功从想定文件加载%1架红方无人机").arg(redAircraftList.size()), "SUCCESS");
+    QMessageBox::information(this, "成功", 
+                             QString("已从想定文件加载%1架红方无人机\n正在启动在线调试...").arg(redAircraftList.size()));
+    
     // 使用统一的项目根目录常量
     QString pythonScriptPath = PROJECT_ROOT_DIR + "online_debug.py";
     
@@ -1122,7 +1158,7 @@ void MainWindow::on_onlineDebugButton_clicked()
         pythonProcess->kill();
         pythonProcess->deleteLater();
         pythonProcess = nullptr;
-        addLogMessage("已经杀死进程", "INFO");
+        addLogMessage("已终止之前的调试进程", "INFO");
     }
     
     // 启动Python脚本
@@ -1566,4 +1602,132 @@ bool MainWindow::loadFromXml(const QString &fileName, QList<Aircraft> &aircraftL
     }
     
     return true;
+}
+
+bool MainWindow::loadRedFromScenarioXml(const QString &fileName, QList<Aircraft> &aircraftList)
+{
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    QXmlStreamReader reader(&file);
+    aircraftList.clear();
+    
+    // 用于跟踪当前解析状态
+    bool inRedSide = false;         // 是否在<红方>标签内
+    bool inAirDomain = false;       // 是否在<空中>标签内
+    bool inEntity = false;          // 是否在<实体>标签内
+    
+    // 临时存储当前实体信息
+    QString currentEntityId;
+    QString currentEntityName;
+    QString currentEntityModel;
+    QString currentEntityPosition;
+    QString currentElement;
+    
+    int aircraftIndex = 1;  // 用于生成飞机ID
+    
+    while (!reader.atEnd()) {
+        reader.readNext();
+        
+        if (reader.isStartElement()) {
+            currentElement = reader.name().toString();
+            
+            // 检测<红方>标签
+            if (currentElement == "红方" || currentElement == QString::fromUtf8("红方")) {
+                inRedSide = true;
+                addLogMessage("开始解析红方数据", "INFO");
+            }
+            // 检测<空中>标签
+            else if ((currentElement == "空中" || currentElement == QString::fromUtf8("空中")) && inRedSide) {
+                inAirDomain = true;
+                addLogMessage("开始解析空中实体", "INFO");
+            }
+            // 检测<实体>标签
+            else if ((currentElement == "实体" || currentElement == QString::fromUtf8("实体")) && inRedSide && inAirDomain) {
+                inEntity = true;
+                // 获取实体ID属性
+                currentEntityId = reader.attributes().value("ID").toString();
+                // 重置其他字段
+                currentEntityName = "";
+                currentEntityModel = "";
+                currentEntityPosition = "";
+            }
+            
+        } else if (reader.isEndElement()) {
+            QString endElement = reader.name().toString();
+            
+            // 结束<红方>标签
+            if (endElement == "红方" || endElement == QString::fromUtf8("红方")) {
+                inRedSide = false;
+            }
+            // 结束<空中>标签
+            else if (endElement == "空中" || endElement == QString::fromUtf8("空中")) {
+                inAirDomain = false;
+            }
+            // 结束<实体>标签 - 保存当前实体
+            else if ((endElement == "实体" || endElement == QString::fromUtf8("实体")) && inEntity) {
+                inEntity = false;
+                
+                // 解析位置字符串（格式：经度,纬度,高度）
+                if (!currentEntityPosition.isEmpty()) {
+                    QStringList posParts = currentEntityPosition.split(',');
+                    if (posParts.size() >= 3) {
+                        double longitude = posParts[0].toDouble();
+                        double latitude = posParts[1].toDouble();
+                        double altitude = posParts[2].toDouble();
+                        
+                        // 创建Aircraft对象
+                        Aircraft aircraft;
+                        aircraft.id = aircraftIndex++;
+                        aircraft.type = currentEntityName.isEmpty() ? "无人机" : currentEntityName;
+                        aircraft.longitude = longitude;
+                        aircraft.latitude = latitude;
+                        aircraft.altitude = altitude;
+                        aircraft.speed = 200.0;  // 默认速度
+                        aircraft.heading = 0.0;  // 默认航向
+                        aircraft.status = "待命"; // 默认状态
+                        
+                        aircraftList.append(aircraft);
+                        
+                        addLogMessage(QString("解析实体: ID=%1, 名称=%2, 位置=(%3, %4, %5)")
+                                          .arg(currentEntityId)
+                                          .arg(currentEntityName)
+                                          .arg(longitude, 0, 'f', 6)
+                                          .arg(latitude, 0, 'f', 6)
+                                          .arg(altitude, 0, 'f', 2), "DEBUG");
+                    }
+                }
+            }
+            
+        } else if (reader.isCharacters() && !reader.isWhitespace()) {
+            QString text = reader.text().toString().trimmed();
+            
+            if (inEntity && inRedSide && inAirDomain) {
+                // 提取实体名称
+                if (currentElement == "名称" || currentElement == QString::fromUtf8("名称")) {
+                    currentEntityName = text;
+                }
+                // 提取实体型号
+                else if (currentElement == "型号" || currentElement == QString::fromUtf8("型号")) {
+                    currentEntityModel = text;
+                }
+                // 提取实体位置
+                else if (currentElement == "位置" || currentElement == QString::fromUtf8("位置")) {
+                    currentEntityPosition = text;
+                }
+            }
+        }
+    }
+    
+    file.close();
+    
+    if (reader.hasError()) {
+        addLogMessage(QString("XML解析错误: %1").arg(reader.errorString()), "ERROR");
+        return false;
+    }
+    
+    addLogMessage(QString("成功解析%1架红方无人机").arg(aircraftList.size()), "SUCCESS");
+    return !aircraftList.isEmpty();
 }

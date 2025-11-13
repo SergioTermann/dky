@@ -15,6 +15,17 @@ from tkinter import filedialog
 import os
 import xml.etree.ElementTree as ET
 
+# ========== 坐标系统配置 ==========
+# 参考点：所有局部坐标的零点位置（经纬度）
+REFERENCE_POINT_LAT = 39.53  # 参考点纬度（度）
+REFERENCE_POINT_LON = 115.7  # 参考点经度（度）
+
+# 坐标转换常数
+# 在北纬39.53度处的近似值
+KM_PER_DEGREE_LAT = 111.0  # 1度纬度 ≈ 111 km
+KM_PER_DEGREE_LON = 111.0 * math.cos(math.radians(REFERENCE_POINT_LAT))  # 1度经度 ≈ 85.5 km
+# ==================================
+
 
 # 1. Define data classes
 @dataclass
@@ -183,9 +194,14 @@ class TacviewStreamer:
                 x, y = position
                 z = 1000 + random.uniform(-100, 100)  # 模拟高度
             
-            # 简单的坐标转换 (这里可以根据实际需要调整)
-            longitude = (x - 50) * 0.01  # 将x坐标转换为经度
-            latitude = (y - 50) * 0.01   # 将y坐标转换为纬度
+            # 将局部坐标转换为经纬度
+            # x, y 单位：km，相对于参考点的偏移量
+            # x轴：向东为正，y轴：向北为正
+            delta_lon = x / KM_PER_DEGREE_LON  # km -> 度
+            delta_lat = y / KM_PER_DEGREE_LAT  # km -> 度
+            
+            longitude = REFERENCE_POINT_LON + delta_lon
+            latitude = REFERENCE_POINT_LAT + delta_lat
             altitude = z
             
             # 确保经纬度在有效范围内
@@ -981,28 +997,35 @@ class GameBasedTaskAllocation:
 
 # 3. Load situation data and execute task allocation
 def convert_to_xyz(aircraft):
-    """将经纬高坐标转换为xyz坐标"""
-    # 地球半径（单位：千米）
-    R = 6371.0
+    """将经纬高坐标转换为xyz局部坐标
     
+    坐标系统说明：
+    - 参考点 (REFERENCE_POINT_LAT, REFERENCE_POINT_LON) 对应局部坐标 (0, 0)
+    - x轴：向东为正（单位：km）
+    - y轴：向北为正（单位：km）
+    - z轴：高度（单位：m）
+    """
     # 确保输入的经纬度在有效范围内
     longitude = max(-180.0, min(180.0, aircraft['longitude']))
     latitude = max(-90.0, min(90.0, aircraft['latitude']))
     
-    # 将经纬度转换为弧度
-    lat = math.radians(latitude)
-    lon = math.radians(longitude)
+    # 计算相对于参考点的偏移量（单位：度）
+    delta_lon = longitude - REFERENCE_POINT_LON
+    delta_lat = latitude - REFERENCE_POINT_LAT
     
-    # 计算x,y,z坐标（相对于原点）
-    x = R * math.cos(lat) * math.cos(lon)
-    y = R * math.cos(lat) * math.sin(lon)
-    z = aircraft['altitude']  # 高度直接使用
+    # 转换为局部坐标（单位：km）
+    # x轴：向东为正
+    x = delta_lon * KM_PER_DEGREE_LON
+    # y轴：向北为正
+    y = delta_lat * KM_PER_DEGREE_LAT
+    # z轴：高度（单位：m）
+    z = aircraft['altitude']
     
     # 计算速度分量（根据航向和速度）
     heading_rad = math.radians(aircraft['heading'])
     speed = aircraft['speed']
-    vx = speed * math.sin(heading_rad)
-    vy = speed * math.cos(heading_rad)
+    vx = speed * math.sin(heading_rad)  # 东向速度分量
+    vy = speed * math.cos(heading_rad)  # 北向速度分量
     vz = 0  # 假设垂直速度为0
     
     return {'x': x, 'y': y, 'z': z, 'vx': vx, 'vy': vy, 'vz': vz}

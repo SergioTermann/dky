@@ -299,8 +299,8 @@ void MainWindow::on_actionLoadRed_triggered()
 {
     QString fileName = QFileDialog::getOpenFileName(this,
                                                     "加载红方态势",
-                                                    QDir::currentPath() + "/test_red_data.json",
-                                                    "All Supported Files (*.json *.xml);;JSON Files (*.json);;XML Files (*.xml)");
+                                                    QDir::currentPath(),
+                                                    "All Supported Files (*.json *.xml);;JSON Files (*.json);;XML Files (*.xml);;Scenario XML Files (*想定*.xml)");
 
     if (fileName.isEmpty()) return;
 
@@ -310,10 +310,31 @@ void MainWindow::on_actionLoadRed_triggered()
     
     // 根据文件扩展名选择加载格式
     if (fileName.endsWith(".xml", Qt::CaseInsensitive)) {
-        // 从XML文件加载
-        loadSuccess = loadFromXml(fileName, aircraftList, params);
+        // 从XML文件加载 - 智能识别XML类型
+        addLogMessage("正在尝试解析XML文件...", "INFO");
+        
+        // 先尝试作为想定XML文件加载（包含<业务><实体部署><红方>结构）
+        // 使用 verboseLog=false 避免在尝试性解析时输出过多日志
+        if (loadRedFromScenarioXml(fileName, aircraftList, false)) {
+            loadSuccess = true;
+            addLogMessage("✓ 识别为想定XML文件格式", "SUCCESS");
+            addLogMessage(QString("成功加载%1架红方无人机").arg(aircraftList.size()), "INFO");
+        } 
+        // 如果想定格式加载失败，尝试简单XML格式（包含<situation><red_aircraft>结构）
+        else {
+            addLogMessage("想定格式不匹配，尝试简单XML格式...", "INFO");
+            aircraftList.clear();  // 清空可能的部分数据
+            loadSuccess = loadFromXml(fileName, aircraftList, params);
+            if (loadSuccess) {
+                addLogMessage("✓ 识别为简单XML文件格式", "SUCCESS");
+            }
+        }
+        
         if (!loadSuccess) {
-            QMessageBox::critical(this, "错误", "无法解析XML文件");
+            QMessageBox::critical(this, "错误", 
+                "无法解析XML文件\n\n支持的格式：\n"
+                "1. 想定XML文件（包含<业务><实体部署><红方>结构）\n"
+                "2. 简单XML文件（包含<situation><red_aircraft>结构）");
             addLogMessage(QString("XML文件解析失败：%1").arg(fileName), "ERROR");
             return;
         }
@@ -1604,7 +1625,7 @@ bool MainWindow::loadFromXml(const QString &fileName, QList<Aircraft> &aircraftL
     return true;
 }
 
-bool MainWindow::loadRedFromScenarioXml(const QString &fileName, QList<Aircraft> &aircraftList)
+bool MainWindow::loadRedFromScenarioXml(const QString &fileName, QList<Aircraft> &aircraftList, bool verboseLog)
 {
     QFile file(fileName);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -1637,12 +1658,12 @@ bool MainWindow::loadRedFromScenarioXml(const QString &fileName, QList<Aircraft>
             // 检测<红方>标签
             if (currentElement == "红方" || currentElement == QString::fromUtf8("红方")) {
                 inRedSide = true;
-                addLogMessage("开始解析红方数据", "INFO");
+                if (verboseLog) addLogMessage("开始解析红方数据", "INFO");
             }
             // 检测<空中>标签
             else if ((currentElement == "空中" || currentElement == QString::fromUtf8("空中")) && inRedSide) {
                 inAirDomain = true;
-                addLogMessage("开始解析空中实体", "INFO");
+                if (verboseLog) addLogMessage("开始解析空中实体", "INFO");
             }
             // 检测<实体>标签
             else if ((currentElement == "实体" || currentElement == QString::fromUtf8("实体")) && inRedSide && inAirDomain) {
@@ -1691,12 +1712,14 @@ bool MainWindow::loadRedFromScenarioXml(const QString &fileName, QList<Aircraft>
                         
                         aircraftList.append(aircraft);
                         
-                        addLogMessage(QString("解析实体: ID=%1, 名称=%2, 位置=(%3, %4, %5)")
-                                          .arg(currentEntityId)
-                                          .arg(currentEntityName)
-                                          .arg(longitude, 0, 'f', 6)
-                                          .arg(latitude, 0, 'f', 6)
-                                          .arg(altitude, 0, 'f', 2), "DEBUG");
+                        if (verboseLog) {
+                            addLogMessage(QString("解析实体: ID=%1, 名称=%2, 位置=(%3, %4, %5)")
+                                              .arg(currentEntityId)
+                                              .arg(currentEntityName)
+                                              .arg(longitude, 0, 'f', 6)
+                                              .arg(latitude, 0, 'f', 6)
+                                              .arg(altitude, 0, 'f', 2), "DEBUG");
+                        }
                     }
                 }
             }
@@ -1724,10 +1747,13 @@ bool MainWindow::loadRedFromScenarioXml(const QString &fileName, QList<Aircraft>
     file.close();
     
     if (reader.hasError()) {
-        addLogMessage(QString("XML解析错误: %1").arg(reader.errorString()), "ERROR");
+        if (verboseLog) addLogMessage(QString("XML解析错误: %1").arg(reader.errorString()), "ERROR");
         return false;
     }
     
-    addLogMessage(QString("成功解析%1架红方无人机").arg(aircraftList.size()), "SUCCESS");
+    if (verboseLog && !aircraftList.isEmpty()) {
+        addLogMessage(QString("成功解析%1架红方无人机").arg(aircraftList.size()), "SUCCESS");
+    }
+    
     return !aircraftList.isEmpty();
 }

@@ -1135,42 +1135,6 @@ void MainWindow::on_onlineDebugButton_clicked()
 {
     addLogMessage("启动在线调试功能...", "INFO");
     
-    // 首先弹出文件选择对话框，选择想定XML文件
-    QString fileName = QFileDialog::getOpenFileName(this,
-                                                    "选择想定XML文件",
-                                                    QDir::currentPath(),
-                                                    "XML Files (*.xml)");
-    
-    if (fileName.isEmpty()) {
-        addLogMessage("用户取消了文件选择", "INFO");
-        return;
-    }
-    
-    addLogMessage(QString("选择了想定文件: %1").arg(fileName), "INFO");
-    
-    // 从XML文件中加载红方态势
-    QList<Aircraft> redAircraftList;
-    if (!loadRedFromScenarioXml(fileName, redAircraftList)) {
-        QMessageBox::critical(this, "错误", "无法解析想定XML文件或未找到红方态势数据");
-        addLogMessage("想定XML文件解析失败", "ERROR");
-        return;
-    }
-    
-    // 清空当前红方数据并加载新数据
-    redAircraftModel->clearAircraft();
-    redAircraftModel->setAircraftList(redAircraftList);
-    
-    // 更新nextAircraftId
-    int maxId = 0;
-    for (const auto& aircraft : redAircraftList) {
-        if (aircraft.id > maxId) maxId = aircraft.id;
-    }
-    nextAircraftId = maxId + 1;
-    
-    addLogMessage(QString("成功从想定文件加载%1架红方无人机").arg(redAircraftList.size()), "SUCCESS");
-    QMessageBox::information(this, "成功", 
-                             QString("已从想定文件加载%1架红方无人机\n正在启动在线调试...").arg(redAircraftList.size()));
-    
     // 使用统一的项目根目录常量
     QString pythonScriptPath = PROJECT_ROOT_DIR + "online_debug.py";
     
